@@ -4,6 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Chores Admin Dashboard</title>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1020">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <style>
     :root{
       --bg:#0b1020; --text:#e8ecff; --muted:#a9b4e6; --line:rgba(255,255,255,.10);
@@ -634,7 +641,71 @@
 <script>
 (() => {
   const KEY = "chores_shared_v1";
-  const PEOPLE_KEY = "chores_people_v1";
+  
+  // ===== Google + Sheets Sync CONFIG (FILL THESE) =====
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwaa0cARwT_CZKN-6o_QE7HYWXY2NZReMreQK7xu53aPOzMz-696cBaCLppzAc2nLmH/exec";
+  const GOOGLE_CLIENT_ID = "268475007338-dj50bjnkclghg3eaiv3bivh4qu8325mn.apps.googleusercontent.com";
+  const ADMIN_EMAIL_ALLOW = "kimwilson521@gmail.com";
+  const TOKEN_KEY = "admin_id_token_v1";
+  // ====================================================
+
+  async function verifyAdminOrRedirect(){
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    if(!token){ window.location.replace("index.html"); return null; }
+
+    // Verify token with Google tokeninfo (signature checked by Google)
+    try{
+      const res = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(token));
+      if(!res.ok) throw new Error("Token invalid");
+      const data = await res.json();
+      if(data.aud !== GOOGLE_CLIENT_ID) throw new Error("Wrong client id");
+      const email = (data.email || "").toLowerCase();
+      if(email !== ADMIN_EMAIL_ALLOW.toLowerCase()) throw new Error("Not authorised");
+      return token;
+    }catch(e){
+      sessionStorage.removeItem(TOKEN_KEY);
+      window.location.replace("index.html");
+      return null;
+    }
+  }
+
+  function api(action, payload){
+    return fetch(WEBAPP_URL, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ action, ...payload })
+    }).then(r=>r.json());
+  }
+
+  function normalizeFromSheet(x){
+    const doneStr = String(x.done ?? "").toLowerCase();
+    return {
+      ...x,
+      // Make it match existing admin code expectations:
+      id: String(x.id || ""),
+      name: String(x.name || ""),
+      assignee: String(x.assignee || ""),
+      due: String(x.due || ""),
+      priority: String(x.priority || "medium"),
+      repeat: String(x.repeat || "none") || "none",
+      repeatEveryDays: x.repeatEveryDays ? Number(x.repeatEveryDays) : null,
+      category: String(x.category || ""),
+      done: doneStr === "true" || x.done === true,
+      doneAt: x.doneAt ? Date.parse(x.doneAt) : 0,
+      photoAt: x.photoAt ? Date.parse(x.photoAt) : (x.doneAt ? Date.parse(x.doneAt) : 0),
+      photo: x.photoUrl || "",      // keeps gallery/list working
+      photoUrl: x.photoUrl || "",
+      photoFileId: x.photoFileId || ""
+    };
+  }
+
+  async function refreshFromSheet(){
+    const out = await api("listChores", { assignee: "" }); // all
+    if(!out.ok){ console.warn(out.error); return; }
+    chores = (out.items || []).map(normalizeFromSheet);
+    verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
+  }
+const PEOPLE_KEY = "chores_people_v1";
 
   const $ = id => document.getElementById(id);
 
@@ -711,8 +782,8 @@
   let lastOpenedYMD = null;
 
   function uid(){ return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
-  function load(){ try{ const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : []; } catch{ return []; } }
-  function save(items){ localStorage.setItem(KEY, JSON.stringify(items)); }
+  function load(){ return []; } catch{ return []; } }
+  function save(items){ /* no-op: data lives in Google Sheets */ }
 
   function normalizeName(s){ return (s || "").trim().replace(/\s+/g, " "); }
 
@@ -784,7 +855,7 @@
     return c.repeat || "none";
   }
 
-  let chores = load();
+  let chores = [];
 
   function syncEveryXUI(){
     if(!el.everyXWrap) return;
@@ -842,7 +913,7 @@
       savePeople([...new Set(people)].sort((a,b)=>a.localeCompare(b)));
     }
     el.newPerson.value = "";
-    renderAll();
+    verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
   });
 
   function computeStats(){
@@ -963,7 +1034,7 @@
 
       const photoThumb = c.photo
         ? `<span class="thumb">
-             <img src="${c.photo}" alt="photo" data-photo="1" title="Open photo"/>
+             <img src="${c.photoUrl || c.photo}" alt="photo" data-photo="1" title="Open photo"/>
              <span class="tag">🕒 ${escapeHtml(fmtTime(c.photoAt || c.doneAt))}</span>
            </span>`
         : `<span class="tag">📷 No photo</span>`;
@@ -1012,7 +1083,7 @@
     const msRange = range === "all" ? null : (Number(range) * 24 * 60 * 60 * 1000);
 
     const items = chores
-      .filter(c => c.done && c.photo)
+      .filter(c => c.done && (c.photoUrl || c.photo))
       .filter(c => who === "all" ? true : (normalizeName(c.assignee) === who))
       .filter(c => type === "all" ? true : ((c.repeat || "none") === type))
       .filter(c => !msRange ? true : ((now - (c.photoAt || c.doneAt || 0)) <= msRange))
@@ -1031,7 +1102,7 @@
       const cat = normalizeName(c.category) || "Uncategorized";
       return `
         <div class="gCard">
-          <img src="${c.photo}" alt="Proof" data-photo="1" />
+          <img src="${c.photoUrl || c.photo}" alt="Proof" data-photo="1" />
           <div class="gMeta">
             <b>${escapeHtml(c.name)}</b>
             <div class="gRow">
@@ -1202,7 +1273,7 @@
       const count = items.length;
 
       const dots = items.slice(0, 10).map(c => `<span class="pDot ${c.photo ? "" : "noPhoto"}" title="${escapeHtml(c.name)}"></span>`).join("");
-      const thumbs = items.filter(c => c.photo).slice(0, 4).map(c => `<img src="${c.photo}" data-photo="1" title="${escapeHtml(c.name)}">`).join("");
+      const thumbs = items.filter(c => c.photo).slice(0, 4).map(c => `<img src="${c.photoUrl || c.photo}" data-photo="1" title="${escapeHtml(c.name)}">`).join("");
 
       return `
         <div class="dayCell" data-ymd="${cell.ymd}">
@@ -1295,7 +1366,7 @@
       el.archList.innerHTML = items.map(c => {
         const whoLabel = normalizeName(c.assignee) || "Unassigned";
         const when = mode === "photoAt" ? fmtTime(c.photoAt || c.doneAt) : fmtTime(c.doneAt || c.photoAt);
-        const proof = c.photo ? `<div class="archThumb"><img src="${c.photo}" data-photo="1" alt="proof"></div>` : `<span class="tag">📷 No photo</span>`;
+        const proof = c.photo ? `<div class="archThumb"><img src="${c.photoUrl || c.photo}" data-photo="1" alt="proof"></div>` : `<span class="tag">📷 No photo</span>`;
         return `
           <div class="archItem">
             <div class="archMeta">
@@ -1318,27 +1389,41 @@
   function closeDrawer(){ el.drawer.classList.remove("open"); }
 
   // ===== CRUD =====
-  function addChore(data){
-    chores.unshift({
-      id: uid(),
-      name: data.name.trim(),
+  async function addChore(data){
+    const token = await verifyAdminOrRedirect();
+    if(!token) return;
+
+    const payload = {
+      id_token: token,
+      name: (data.name || "").trim(),
       assignee: normalizeName(data.assignee || ""),
       due: data.due || "",
       priority: data.priority || "medium",
       repeat: data.repeat || "none",
-      repeatEveryDays: data.repeat === "everyX" ? (Number(data.repeatEveryDays || 3) || 3) : null,
-      category: normalizeName(data.category || ""),
-      done:false, doneAt:null, createdAt:Date.now(),
-      photo:null, photoAt:null
-    });
+      repeatEveryDays: data.repeat === "everyX" ? (Number(data.repeatEveryDays || 3) || 3) : 3,
+      category: normalizeName(data.category || "")
+    };
+
+    const out = await api("createChore", payload);
+    if(!out.ok){
+      alert(out.error || "Create failed");
+      return;
+    }
+    await refreshFromSheet();
+  });
     save(chores);
-    renderAll();
+    verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
   }
 
-  function deleteChore(id){
-    chores = chores.filter(c => c.id !== id);
-    save(chores);
-    renderAll();
+  async function deleteChore(id){
+    const token = await verifyAdminOrRedirect();
+    if(!token) return;
+    const out = await api("deleteChore", { id_token: token, choreId: id });
+    if(!out.ok){
+      alert(out.error || "Delete failed");
+      return;
+    }
+    await refreshFromSheet();
   }
 
   function toggleDone(id, done){
@@ -1363,7 +1448,7 @@
       c.doneAt = null;
     }
     save(chores);
-    renderAll();
+    verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
   }
 
   // Safe edit: no assignee prompt (assignee creation locked to People section)
@@ -1396,7 +1481,7 @@
     c.category = normalizeName(category);
 
     save(chores);
-    renderAll();
+    verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
   }
 
   // Seed
@@ -1439,7 +1524,7 @@
       el.tabBtns.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       showTab(btn.getAttribute("data-tab"));
-      renderAll();
+      verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
     });
   });
 
@@ -1476,7 +1561,7 @@
     el.viewYearBtn.classList.toggle("active", mode==="year");
     el.monthView.style.display = mode==="month" ? "" : "none";
     el.yearView.style.display = mode==="year" ? "" : "none";
-    renderAll();
+    verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
   }
   el.viewMonthBtn.addEventListener("click", () => setViewMode("month"));
   el.viewYearBtn.addEventListener("click", () => setViewMode("year"));
@@ -1518,9 +1603,9 @@
   el.calMode.addEventListener("change", renderAll);
 
   // Calendar controls
-  el.calPrev.addEventListener("click", () => { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()-1, 1); renderAll(); });
-  el.calNext.addEventListener("click", () => { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1); renderAll(); });
-  el.calToday.addEventListener("click", () => { calCursor = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), 1); renderAll(); });
+  el.calPrev.addEventListener("click", () => { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()-1, 1); verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); }); });
+  el.calNext.addEventListener("click", () => { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1); verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); }); });
+  el.calToday.addEventListener("click", () => { calCursor = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), 1); verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); }); });
 
   // Click actions + calendar clicks
   document.addEventListener("click", (e) => {
@@ -1546,16 +1631,16 @@
     else if(action === "edit"){ editChore(id); }
   });
 
-  el.seedBtn.addEventListener("click", () => { seedMaisieIfMissing(); renderAll(); });
+  el.seedBtn.addEventListener("click", () => { seedMaisieIfMissing(); verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); }); });
   el.resetBtn.addEventListener("click", () => {
     if(confirm("This will delete ALL chores and photos. Continue?")){
       chores = [];
       save(chores);
-      renderAll();
+      verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
     }
   });
 
-  window.addEventListener("storage", (ev) => { if(ev.key === KEY || ev.key === PEOPLE_KEY) renderAll(); });
+  window.addEventListener("storage", (ev) => { if(ev.key === KEY || ev.key === PEOPLE_KEY) verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); }); });
 
   function renderAll(){
     chores = load();
@@ -1573,8 +1658,12 @@
   showTab("chores");
   setViewMode("month");
   syncEveryXUI();
-  renderAll();
+  verifyAdminOrRedirect().then(()=>{ refreshFromSheet(); setInterval(refreshFromSheet, 5000); });
 })();
+  // PWA
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  }
 </script>
 </body>
 </html>
