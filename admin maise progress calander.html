@@ -1,0 +1,1580 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chores Admin Dashboard</title>
+  <style>
+    :root{
+      --bg:#0b1020; --text:#e8ecff; --muted:#a9b4e6; --line:rgba(255,255,255,.10);
+      --shadow:0 12px 30px rgba(0,0,0,.35); --radius:18px;
+      --ok:#36d399; --warn:#fbbf24; --bad:#fb7185; --hi:#60a5fa;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.25), transparent 55%),
+        radial-gradient(900px 500px at 90% 0%, rgba(251,113,133,.18), transparent 60%),
+        radial-gradient(1000px 700px at 60% 120%, rgba(54,211,153,.14), transparent 60%),
+        var(--bg);
+      min-height:100vh;
+    }
+    .wrap{max-width:1200px;margin:0 auto;padding:28px 18px 40px}
+    header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+    h1{margin:0;font-size:26px;letter-spacing:.3px}
+    .subtitle{color:var(--muted);font-size:13px;line-height:1.35;margin-top:6px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    button,input,select{font:inherit;color:var(--text)}
+
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.04);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      transition:.15s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+    }
+    .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.07)}
+    .btn:active{transform:translateY(0px)}
+    .btn.primary{border-color:rgba(96,165,250,.45);background:rgba(96,165,250,.14)}
+    .btn.danger{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12)}
+    .btn.small{padding:8px 10px;border-radius:11px;font-size:12px;box-shadow:none}
+    .btn.ghost{border-color:rgba(255,255,255,.14);background:rgba(0,0,0,.12);box-shadow:none}
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      padding:14px;
+      border-bottom:1px solid var(--line);
+      background:rgba(0,0,0,.08);
+    }
+    @media (max-width:800px){ .stats{grid-template-columns:repeat(2,1fr)} }
+    .stat{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.04);
+      border-radius:14px;
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-height:82px;
+    }
+    .stat .k{color:var(--muted);font-size:12px}
+    .stat .v{font-size:20px;font-weight:650;letter-spacing:.2px}
+    .stat small{color:var(--muted);font-size:11px}
+
+    .barOuter{
+      width:100%;height:10px;border-radius:999px;border:1px solid var(--line);
+      background:rgba(0,0,0,.18);overflow:hidden;
+    }
+    .barInner{
+      height:100%;width:0%;
+      background:rgba(54,211,153,.75);
+      border-radius:999px;
+      transition:width .25s ease;
+    }
+
+    .personWrap{
+      padding:14px;
+      border-bottom:1px solid var(--line);
+      background:rgba(0,0,0,.06);
+    }
+    .personHd{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .personHd h3{margin:0;font-size:13px;letter-spacing:.2px}
+    .personHd span{color:var(--muted);font-size:12px}
+    .personList{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    @media (max-width:800px){ .personList{grid-template-columns:1fr} }
+    .personCard{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      border-radius:14px;
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .personTop{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+      color:var(--muted);font-size:12px;
+    }
+    .personTop b{color:var(--text);font-size:13px}
+
+    .tabs{
+      display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);
+      background:rgba(0,0,0,.10);flex-wrap:wrap;align-items:center;justify-content:space-between;
+    }
+    .tabBtns{display:flex;gap:10px;flex-wrap:wrap}
+    .tabBtn{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      padding:8px 10px;border-radius:999px;cursor:pointer;color:var(--muted);
+    }
+    .tabBtn.active{color:var(--text);border-color:rgba(96,165,250,.45);background:rgba(96,165,250,.12)}
+
+    .grid{display:grid;grid-template-columns:380px 1fr;gap:14px;align-items:start;margin-top:14px}
+    @media (max-width:980px){ .grid{grid-template-columns:1fr} }
+
+    .hd{
+      padding:14px 14px 10px;border-bottom:1px solid var(--line);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      background:rgba(0,0,0,.10);
+    }
+    .hd h2{margin:0;font-size:14px;letter-spacing:.3px;opacity:.95}
+    .bd{padding:14px}
+
+    .form{display:grid;gap:10px}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    @media (max-width:450px){ .row2,.row3{grid-template-columns:1fr} }
+    label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+    input[type="text"], input[type="date"], input[type="number"], select{
+      width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);
+      background:rgba(0,0,0,.18);outline:none;
+    }
+    input:focus,select:focus{border-color:rgba(96,165,250,.55)}
+
+    .toolbar{
+      display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+      padding:14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.10);
+    }
+    .toolbar .left,.toolbar .right{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .toolbar input[type="text"]{min-width:230px}
+
+    .list{display:flex;flex-direction:column}
+    .item{
+      padding:12px 14px;border-bottom:1px solid var(--line);
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      background:rgba(255,255,255,.02);
+    }
+    .item:last-child{border-bottom:none}
+    .meta{display:flex;flex-direction:column;gap:6px;min-width:0}
+    .topline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+    .name{font-weight:700;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
+    .subline{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px}
+    .tag{
+      border:1px solid var(--line);border-radius:999px;padding:4px 8px;background:rgba(255,255,255,.03);
+      display:inline-flex;gap:6px;align-items:center;
+    }
+    .dot{width:8px;height:8px;border-radius:99px;background:var(--hi);display:inline-block}
+    .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .thumb{display:inline-flex;align-items:center;gap:8px}
+    .thumb img{width:40px;height:40px;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:pointer}
+
+    .empty{padding:26px 14px;text-align:center;color:var(--muted)}
+
+    /* Gallery */
+    .galleryBar{
+      display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+      padding:14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.10);
+    }
+    .galleryGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px}
+    @media (max-width:1050px){ .galleryGrid{grid-template-columns:repeat(3,1fr)} }
+    @media (max-width:780px){ .galleryGrid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:460px){ .galleryGrid{grid-template-columns:1fr} }
+    .gCard{border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+    .gCard img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;cursor:pointer}
+    .gMeta{padding:10px 10px 12px;display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:12px}
+    .gMeta b{color:var(--text);font-size:13px}
+    .gRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+    /* Calendar */
+    .calBar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px;
+      border-bottom:1px solid var(--line);
+      background:rgba(0,0,0,.10);
+    }
+    .calBar .left, .calBar .right{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    }
+    .calTitle{font-weight:800;letter-spacing:.2px}
+    .calGridWrap{ padding:14px; }
+    .dow{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:8px;
+      margin-bottom:8px;
+      color:var(--muted);
+      font-size:12px;
+      text-align:center;
+    }
+    .calGrid{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:8px;
+    }
+    .dayCell{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      border-radius:14px;
+      padding:10px;
+      min-height:88px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      cursor:pointer;
+    }
+    .dayCell.muted{opacity:.35;cursor:default}
+    .dayTop{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+    .dayNum{font-weight:800}
+    .dayCount{color:var(--muted);font-size:12px}
+    .proofRow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .pDot{
+      width:10px;height:10px;border-radius:99px;
+      border:1px solid var(--line);
+      background:rgba(54,211,153,.75);
+      display:inline-block;
+    }
+    .pDot.noPhoto{background:rgba(251,191,36,.65)}
+    .miniThumbs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .miniThumbs img{
+      width:28px;height:28px;object-fit:cover;border-radius:9px;border:1px solid var(--line);
+      cursor:pointer;
+    }
+
+    .seg{
+      display:inline-flex;
+      border:1px solid var(--line);
+      border-radius:999px;
+      overflow:hidden;
+      background:rgba(0,0,0,.16);
+    }
+    .seg button{
+      border:none;
+      background:transparent;
+      padding:8px 10px;
+      cursor:pointer;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .seg button.active{
+      background:rgba(96,165,250,.18);
+      color:var(--text);
+    }
+
+    .yearWrap{ padding:14px; }
+    .yearGrid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+    }
+    @media (max-width:1050px){ .yearGrid{grid-template-columns:repeat(3,1fr)} }
+    @media (max-width:780px){ .yearGrid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:460px){ .yearGrid{grid-template-columns:1fr} }
+
+    .miniCal{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      border-radius:16px;
+      padding:10px;
+    }
+    .miniHd{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      margin-bottom:8px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .miniHd b{color:var(--text);font-size:12px}
+    .miniDow{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:4px;
+      color:rgba(169,180,230,.75);
+      font-size:10px;
+      text-align:center;
+      margin-bottom:6px;
+    }
+    .miniGrid{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:4px;
+    }
+    .miniDay{
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.12);
+      border-radius:10px;
+      padding:6px 0;
+      text-align:center;
+      font-size:11px;
+      cursor:pointer;
+      position:relative;
+      min-height:30px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .miniDay.muted{opacity:.35;cursor:default}
+    .miniDay .badge{
+      position:absolute;
+      bottom:3px; right:4px;
+      font-size:9px;
+      color:rgba(255,255,255,.85);
+      background:rgba(54,211,153,.35);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      padding:1px 5px;
+    }
+
+    /* Drawer */
+    .drawer{
+      position:fixed; inset:0; background:rgba(0,0,0,.60);
+      display:none; align-items:flex-end; justify-content:center; padding:16px;
+      z-index:10000;
+    }
+    .drawer.open{display:flex}
+    .drawerPanel{
+      width:min(900px, 96vw);
+      max-height:82vh;
+      overflow:auto;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(12,18,36,.96);
+      box-shadow:0 24px 80px rgba(0,0,0,.55);
+    }
+    .drawerHd{
+      position:sticky; top:0;
+      background:rgba(12,18,36,.96);
+      border-bottom:1px solid var(--line);
+      padding:14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      z-index:1;
+    }
+    .drawerHd b{font-size:14px}
+    .drawerClose{
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.25);
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+    }
+    .archList{padding:14px;display:flex;flex-direction:column;gap:10px}
+    .archItem{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      border-radius:14px;
+      padding:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:flex-start;
+    }
+    .archMeta{display:flex;flex-direction:column;gap:6px;min-width:0}
+    .archMeta .t{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:520px}
+    .archMeta .s{color:var(--muted);font-size:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .archThumb img{width:54px;height:54px;object-fit:cover;border-radius:14px;border:1px solid var(--line);cursor:pointer}
+
+    /* Lightbox */
+    .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:11000}
+    .lightbox.open{display:flex}
+    .lightbox img{max-width:min(1000px,96vw);max-height:86vh;border-radius:16px;border:1px solid rgba(255,255,255,.15);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+    .lightbox .close{
+      position:absolute;top:14px;right:14px;border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.35);color:var(--text);border-radius:12px;padding:10px 12px;cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Chores Admin Dashboard</h1>
+      <div class="subtitle">Admin view. Assignees are admin-controlled. Archive calendar (month + year) + CSV export.</div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="seedBtn">✨ Seed</button>
+      <button class="btn danger" id="resetBtn">🗑️ Reset</button>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="stats" id="stats"></div>
+
+    <div class="personWrap">
+      <div class="personHd">
+        <h3>Progress by person</h3>
+        <span>Done ÷ total for each assignee (all chores)</span>
+      </div>
+      <div class="personList" id="personBars"></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tabBtns">
+        <button class="tabBtn active" data-tab="chores">Chores</button>
+        <button class="tabBtn" data-tab="gallery">Gallery / Proof</button>
+        <button class="tabBtn" data-tab="calendar">Calendar (Archive)</button>
+      </div>
+      <span style="color:var(--muted);font-size:12px">Storage key: <b style="color:var(--text)">chores_shared_v1</b></span>
+    </div>
+
+    <!-- TAB: CHORES -->
+    <div id="tab-chores">
+      <div class="grid">
+        <section class="card">
+          <div class="hd"><h2>Add a chore</h2></div>
+          <div class="bd">
+            <form class="form" id="choreForm">
+              <label>Chore name
+                <input type="text" id="name" required maxlength="80" />
+              </label>
+
+              <div class="row2">
+                <label>Assigned to
+                  <select id="assignee">
+                    <option value="">Unassigned</option>
+                  </select>
+                </label>
+                <label>Due date <input type="date" id="due" /></label>
+              </div>
+
+              <div class="row3">
+                <label>Priority
+                  <select id="priority">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
+
+                <label>Repeat
+                  <select id="repeat">
+                    <option value="none" selected>None</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="everyX">Every X days</option>
+                  </select>
+                </label>
+
+                <label id="everyXWrap" style="display:none">Every X days
+                  <input type="number" id="repeatEveryDays" min="2" max="365" value="3" />
+                </label>
+              </div>
+
+              <label>Category
+                <input type="text" id="category" maxlength="30" />
+              </label>
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <button class="btn primary" type="submit">➕ Add chore</button>
+              </div>
+
+              <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,.10); padding-top:12px;">
+                <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">
+                  People (admin-only)
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <input type="text" id="newPerson" placeholder="Add person…" style="min-width:220px;" />
+                  <button class="btn small" type="button" id="addPersonBtn">➕ Add person</button>
+                </div>
+                <div style="color:rgba(169,180,230,.75); font-size:12px; margin-top:8px;">
+                  Assignees can only be created here. Editing chores will not create new people.
+                </div>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="toolbar">
+            <div class="left">
+              <input type="text" id="search" placeholder="Search chores…" />
+              <select id="statusFilter">
+                <option value="all" selected>All</option>
+                <option value="open">Open</option>
+                <option value="done">Done</option>
+              </select>
+              <select id="priorityFilter">
+                <option value="all" selected>Any priority</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <select id="assigneeFilter">
+                <option value="all" selected>Anyone</option>
+              </select>
+            </div>
+            <div class="right">
+              <select id="sortBy">
+                <option value="dueAsc" selected>Due soon</option>
+                <option value="dueDesc">Due latest</option>
+                <option value="priority">Priority</option>
+                <option value="name">Name</option>
+                <option value="createdDesc">Newest</option>
+              </select>
+            </div>
+          </div>
+          <div class="list" id="list"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- TAB: GALLERY -->
+    <div id="tab-gallery" style="display:none">
+      <div class="galleryBar">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <select id="galleryAssignee"><option value="all" selected>All people</option></select>
+          <select id="galleryRange">
+            <option value="7" selected>Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="all">All time</option>
+          </select>
+          <select id="galleryType">
+            <option value="all" selected>All types</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="everyX">Every X days</option>
+            <option value="none">No repeat</option>
+          </select>
+          <input type="text" id="gallerySearch" placeholder="Search photos…" />
+        </div>
+        <div style="color:var(--muted); font-size:12px">Shows <b>done</b> chores with photos.</div>
+      </div>
+      <div class="galleryGrid" id="galleryGrid"></div>
+    </div>
+
+    <!-- TAB: CALENDAR -->
+    <div id="tab-calendar" style="display:none">
+      <div class="calBar">
+        <div class="left">
+          <button class="btn small" id="calPrev">←</button>
+          <div class="calTitle" id="calTitle">Month YYYY</div>
+          <button class="btn small" id="calNext">→</button>
+          <button class="btn small" id="calToday">Today</button>
+
+          <div class="seg" aria-label="view switch">
+            <button id="viewMonthBtn" class="active" type="button">Month</button>
+            <button id="viewYearBtn" type="button">Year</button>
+          </div>
+
+          <button class="btn small ghost" id="exportMonthBtn">⬇️ Export Month CSV</button>
+          <button class="btn small ghost" id="exportYearBtn">⬇️ Export Year CSV</button>
+        </div>
+
+        <div class="right">
+          <select id="calAssignee">
+            <option value="all" selected>All people</option>
+          </select>
+          <select id="calMode" title="What counts as archived">
+            <option value="doneAt" selected>Archive by Done date</option>
+            <option value="photoAt">Archive by Photo date</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Month view -->
+      <div id="monthView">
+        <div class="calGridWrap">
+          <div class="dow">
+            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+          </div>
+          <div class="calGrid" id="calGrid"></div>
+        </div>
+      </div>
+
+      <!-- Year view -->
+      <div id="yearView" style="display:none">
+        <div class="yearWrap">
+          <div class="yearGrid" id="yearGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Archive Day Drawer -->
+<div class="drawer" id="drawer">
+  <div class="drawerPanel">
+    <div class="drawerHd">
+      <b id="drawerTitle">Archive</b>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <button class="btn small ghost" id="exportDayBtn">⬇️ Export Day CSV</button>
+        <button class="drawerClose" id="drawerClose">✕ Close</button>
+      </div>
+    </div>
+    <div class="archList" id="archList"></div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" aria-hidden="true">
+  <button class="close" id="lbClose">✕ Close</button>
+  <img id="lbImg" alt="Proof photo" />
+</div>
+
+<script>
+(() => {
+  const KEY = "chores_shared_v1";
+  const PEOPLE_KEY = "chores_people_v1";
+
+  const $ = id => document.getElementById(id);
+
+  const el = {
+    stats: $("stats"),
+    personBars: $("personBars"),
+    list: $("list"),
+
+    form: $("choreForm"),
+    name: $("name"),
+    assignee: $("assignee"),
+    due: $("due"),
+    priority: $("priority"),
+    repeat: $("repeat"),
+    category: $("category"),
+
+    everyXWrap: $("everyXWrap"),
+    repeatEveryDays: $("repeatEveryDays"),
+
+    newPerson: $("newPerson"),
+    addPersonBtn: $("addPersonBtn"),
+
+    search: $("search"),
+    statusFilter: $("statusFilter"),
+    priorityFilter: $("priorityFilter"),
+    assigneeFilter: $("assigneeFilter"),
+    sortBy: $("sortBy"),
+
+    seedBtn: $("seedBtn"),
+    resetBtn: $("resetBtn"),
+
+    tabBtns: [...document.querySelectorAll(".tabBtn")],
+
+    galleryAssignee: $("galleryAssignee"),
+    galleryRange: $("galleryRange"),
+    galleryType: $("galleryType"),
+    gallerySearch: $("gallerySearch"),
+    galleryGrid: $("galleryGrid"),
+
+    // calendar
+    calPrev: $("calPrev"),
+    calNext: $("calNext"),
+    calToday: $("calToday"),
+    calTitle: $("calTitle"),
+    calGrid: $("calGrid"),
+    calAssignee: $("calAssignee"),
+    calMode: $("calMode"),
+
+    viewMonthBtn: $("viewMonthBtn"),
+    viewYearBtn: $("viewYearBtn"),
+    monthView: $("monthView"),
+    yearView: $("yearView"),
+    yearGrid: $("yearGrid"),
+
+    exportMonthBtn: $("exportMonthBtn"),
+    exportYearBtn: $("exportYearBtn"),
+
+    // drawer
+    drawer: $("drawer"),
+    drawerTitle: $("drawerTitle"),
+    drawerClose: $("drawerClose"),
+    exportDayBtn: $("exportDayBtn"),
+    archList: $("archList"),
+
+    // lightbox
+    lightbox: $("lightbox"),
+    lbImg: $("lbImg"),
+    lbClose: $("lbClose"),
+  };
+
+  const todayLocal = new Date();
+  let calCursor = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), 1);
+  let viewMode = "month"; // "month" | "year"
+  let lastOpenedYMD = null;
+
+  function uid(){ return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
+  function load(){ try{ const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : []; } catch{ return []; } }
+  function save(items){ localStorage.setItem(KEY, JSON.stringify(items)); }
+
+  function normalizeName(s){ return (s || "").trim().replace(/\s+/g, " "); }
+
+  function loadPeople(){
+    try { return JSON.parse(localStorage.getItem(PEOPLE_KEY) || "[]"); }
+    catch { return []; }
+  }
+  function savePeople(list){ localStorage.setItem(PEOPLE_KEY, JSON.stringify(list)); }
+
+  function yyyyMmDd(d){
+    const pad=n=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  function parseDate(s){
+    if(!s) return null;
+    const [y,m,d]=s.split("-").map(Number);
+    if(!y||!m||!d) return null;
+    return new Date(y,m-1,d);
+  }
+  function addDays(date, days){ const d=new Date(date); d.setDate(d.getDate()+days); return d; }
+  function addMonths(date, months){
+    const d=new Date(date);
+    const day=d.getDate();
+    d.setMonth(d.getMonth()+months);
+    if(d.getDate()!==day) d.setDate(0);
+    return d;
+  }
+  function nextDueDate(currentDueStr, repeat, repeatEveryDays){
+    const base = parseDate(currentDueStr) || todayLocal;
+    let next = null;
+
+    if(repeat === "daily") next = addDays(base, 1);
+    if(repeat === "weekly") next = addDays(base, 7);
+    if(repeat === "monthly") next = addMonths(base, 1);
+
+    if(repeat === "everyX"){
+      const n = Math.max(2, Math.min(365, Number(repeatEveryDays || 3) || 3));
+      next = addDays(base, n);
+    }
+    return next ? yyyyMmDd(next) : "";
+  }
+
+  function isSameDay(a,b){
+    return a&&b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  }
+  function priorityScore(p){ return p==="high"?3:p==="medium"?2:1; }
+  function statusDot(c){
+    if(c.done) return "ok";
+    const due=parseDate(c.due); if(!due) return "";
+    const t=new Date(todayLocal.getFullYear(),todayLocal.getMonth(),todayLocal.getDate());
+    const d=new Date(due.getFullYear(),due.getMonth(),due.getDate());
+    if(d<t) return "bad";
+    if(isSameDay(d,t)) return "warn";
+    return "";
+  }
+  function escapeHtml(s){
+    return (s ?? "").toString()
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+  function fmtTime(ms){ return ms ? new Date(ms).toLocaleString() : ""; }
+
+  function repeatText(c){
+    if(c.repeat === "none") return "No repeat";
+    if(c.repeat === "daily") return "Daily";
+    if(c.repeat === "weekly") return "Weekly";
+    if(c.repeat === "monthly") return "Monthly";
+    if(c.repeat === "everyX") return `Every ${Number(c.repeatEveryDays || 3)} days`;
+    return c.repeat || "none";
+  }
+
+  let chores = load();
+
+  function syncEveryXUI(){
+    if(!el.everyXWrap) return;
+    el.everyXWrap.style.display = (el.repeat.value === "everyX") ? "" : "none";
+  }
+  el.repeat.addEventListener("change", syncEveryXUI);
+
+  function renderAssigneeOptions(){
+    // People list is admin-controlled
+    let people = loadPeople().map(normalizeName).filter(Boolean);
+
+    // Include any existing assignees already on chores (so you don’t lose them)
+    chores.forEach(c => {
+      const a = normalizeName(c.assignee);
+      if(a && !people.includes(a)) people.push(a);
+    });
+
+    people = [...new Set(people)].sort((a,b)=>a.localeCompare(b));
+    savePeople(people);
+
+    const selected = el.assigneeFilter.value || "all";
+    el.assigneeFilter.innerHTML =
+      `<option value="all">Anyone</option>` +
+      people.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+    el.assigneeFilter.value = people.includes(selected) ? selected : "all";
+
+    const gSelected = el.galleryAssignee.value || "all";
+    el.galleryAssignee.innerHTML =
+      `<option value="all">All people</option>` +
+      people.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+    el.galleryAssignee.value = people.includes(gSelected) ? gSelected : "all";
+
+    const cSelected = el.calAssignee.value || "all";
+    el.calAssignee.innerHTML =
+      `<option value="all">All people</option>` +
+      people.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+    el.calAssignee.value = people.includes(cSelected) ? cSelected : "all";
+
+    // Add-chore dropdown
+    const cur = el.assignee.value || "";
+    el.assignee.innerHTML =
+      `<option value="">Unassigned</option>` +
+      people.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+    el.assignee.value = people.includes(cur) ? cur : "";
+  }
+
+  // Admin-only: add person
+  el.addPersonBtn.addEventListener("click", () => {
+    const name = normalizeName(el.newPerson.value);
+    if(!name) return;
+
+    const people = loadPeople().map(normalizeName).filter(Boolean);
+    if(!people.includes(name)){
+      people.push(name);
+      savePeople([...new Set(people)].sort((a,b)=>a.localeCompare(b)));
+    }
+    el.newPerson.value = "";
+    renderAll();
+  });
+
+  function computeStats(){
+    const total = chores.length;
+    const done = chores.filter(c => c.done).length;
+    const open = total - done;
+    const todayStr = yyyyMmDd(todayLocal);
+    const dueToday = chores.filter(c => !c.done && c.due && c.due === todayStr).length;
+    const overdue = chores.filter(c => {
+      if(c.done) return false;
+      const d = parseDate(c.due);
+      if(!d) return false;
+      const t = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), todayLocal.getDate());
+      return d < t;
+    }).length;
+    const pct = total ? Math.round((done/total)*100) : 0;
+    return { total, open, done, dueToday, overdue, pct };
+  }
+
+  function renderPersonBars(){
+    const by = new Map();
+    chores.forEach(c => {
+      const who = normalizeName(c.assignee) || "Unassigned";
+      if(!by.has(who)) by.set(who, { total:0, done:0 });
+      const rec = by.get(who);
+      rec.total += 1;
+      if(c.done) rec.done += 1;
+    });
+
+    const rows = [...by.entries()]
+      .sort((a,b) => (b[1].total - a[1].total) || a[0].localeCompare(b[0]))
+      .map(([who, rec]) => {
+        const pct = rec.total ? Math.round((rec.done/rec.total)*100) : 0;
+        return `
+          <div class="personCard">
+            <div class="personTop">
+              <b>${escapeHtml(who)}</b>
+              <span>${rec.done}/${rec.total} • ${pct}%</span>
+            </div>
+            <div class="barOuter"><div class="barInner" style="width:${pct}%"></div></div>
+          </div>
+        `;
+      });
+
+    el.personBars.innerHTML = rows.length ? rows.join("") : `<div class="empty">No assignees yet.</div>`;
+  }
+
+  function filtered(){
+    const q = el.search.value.trim().toLowerCase();
+    const status = el.statusFilter.value;
+    const prio = el.priorityFilter.value;
+    const who = el.assigneeFilter.value;
+
+    return chores.filter(c => {
+      if(q){
+        const blob = `${c.name} ${c.assignee} ${c.category}`.toLowerCase();
+        if(!blob.includes(q)) return false;
+      }
+      if(status !== "all"){
+        if(status === "open" && c.done) return false;
+        if(status === "done" && !c.done) return false;
+      }
+      if(prio !== "all" && c.priority !== prio) return false;
+      if(who !== "all" && normalizeName(c.assignee) !== who) return false;
+      return true;
+    });
+  }
+
+  function sortItems(items){
+    const mode = el.sortBy.value;
+    const copy = [...items];
+    const dueKey = c => (parseDate(c.due)?.getTime() ?? Number.POSITIVE_INFINITY);
+
+    if(mode==="dueAsc") copy.sort((a,b)=> dueKey(a)-dueKey(b) || (b.createdAt-a.createdAt));
+    else if(mode==="dueDesc") copy.sort((a,b)=> dueKey(b)-dueKey(a) || (b.createdAt-a.createdAt));
+    else if(mode==="priority") copy.sort((a,b)=> priorityScore(b.priority)-priorityScore(a.priority) || dueKey(a)-dueKey(b));
+    else if(mode==="name") copy.sort((a,b)=> (a.name||"").localeCompare(b.name||""));
+    else if(mode==="createdDesc") copy.sort((a,b)=> b.createdAt-a.createdAt);
+    return copy;
+  }
+
+  function renderStatsAndList(){
+    renderAssigneeOptions();
+
+    const s = computeStats();
+    el.stats.innerHTML = `
+      <div class="stat">
+        <div class="k">Progress</div>
+        <div class="v">${s.pct}%</div>
+        <div class="barOuter"><div class="barInner" style="width:${s.pct}%"></div></div>
+        <small>${s.done} done • ${s.open} open</small>
+      </div>
+      <div class="stat"><div class="k">Due today</div><div class="v">${s.dueToday}</div><small>Open chores due today</small></div>
+      <div class="stat"><div class="k">Overdue</div><div class="v">${s.overdue}</div><small>Needs attention</small></div>
+      <div class="stat"><div class="k">Total chores</div><div class="v">${s.total}</div><small>In your list</small></div>
+    `;
+
+    renderPersonBars();
+
+    const list = sortItems(filtered());
+    if(list.length === 0){
+      el.list.innerHTML = `<div class="empty">No chores match your filters.</div>`;
+      return;
+    }
+
+    el.list.innerHTML = list.map(c => {
+      const dot = statusDot(c);
+      const dueLabel = c.due ? new Date(parseDate(c.due)).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "No due date";
+      const who = normalizeName(c.assignee) ? escapeHtml(normalizeName(c.assignee)) : "Unassigned";
+      const cat = normalizeName(c.category) ? escapeHtml(normalizeName(c.category)) : "Uncategorized";
+
+      const doneBadge = c.done
+        ? `<span class="tag"><span class="dot ok"></span> Done</span>`
+        : `<span class="tag"><span class="dot ${dot}"></span> Open</span>`;
+
+      const prioDot = c.priority==="high" ? "bad" : c.priority==="medium" ? "warn" : "ok";
+      const prioLabel = (c.priority||"medium")[0].toUpperCase() + (c.priority||"medium").slice(1);
+
+      const photoThumb = c.photo
+        ? `<span class="thumb">
+             <img src="${c.photo}" alt="photo" data-photo="1" title="Open photo"/>
+             <span class="tag">🕒 ${escapeHtml(fmtTime(c.photoAt || c.doneAt))}</span>
+           </span>`
+        : `<span class="tag">📷 No photo</span>`;
+
+      return `
+        <div class="item" data-id="${c.id}">
+          <div class="meta">
+            <div class="topline">
+              <span class="name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</span>
+              ${doneBadge}
+              <span class="tag"><span class="dot ${prioDot}"></span> ${escapeHtml(prioLabel)}</span>
+              ${c.photo ? `<span class="tag">📷 Photo</span>` : ``}
+            </div>
+            <div class="subline">
+              <span class="tag">👤 ${who}</span>
+              <span class="tag">📅 ${escapeHtml(dueLabel)}</span>
+              <span class="tag">🔁 ${escapeHtml(repeatText(c))}</span>
+              <span class="tag">🏷️ ${cat}</span>
+              ${photoThumb}
+            </div>
+          </div>
+          <div class="controls">
+            ${c.done
+              ? `<button class="btn small" data-action="undo">↩️ Undo</button>`
+              : `<button class="btn small primary" data-action="done">✅ Done</button>`
+            }
+            <!-- Assignee creation is locked; edit uses safe prompts (no assignee prompt). -->
+            <button class="btn small" data-action="edit">✏️ Edit</button>
+            <button class="btn small danger" data-action="delete">🗑️ Delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // Gallery
+  function renderGallery(){
+    renderAssigneeOptions();
+
+    const who = el.galleryAssignee.value;
+    const range = el.galleryRange.value;
+    const type = el.galleryType.value;
+    const q = el.gallerySearch.value.trim().toLowerCase();
+
+    const now = Date.now();
+    const msRange = range === "all" ? null : (Number(range) * 24 * 60 * 60 * 1000);
+
+    const items = chores
+      .filter(c => c.done && c.photo)
+      .filter(c => who === "all" ? true : (normalizeName(c.assignee) === who))
+      .filter(c => type === "all" ? true : ((c.repeat || "none") === type))
+      .filter(c => !msRange ? true : ((now - (c.photoAt || c.doneAt || 0)) <= msRange))
+      .filter(c => !q ? true : (`${c.name} ${c.assignee} ${c.category}`.toLowerCase().includes(q)))
+      .sort((a,b) => (b.photoAt || b.doneAt || 0) - (a.photoAt || a.doneAt || 0));
+
+    if(items.length === 0){
+      el.galleryGrid.innerHTML = `<div class="empty" style="grid-column:1/-1">No proof photos match your filters.</div>`;
+      return;
+    }
+
+    el.galleryGrid.innerHTML = items.map(c => {
+      const when = fmtTime(c.photoAt || c.doneAt);
+      const due = c.due ? new Date(parseDate(c.due)).toLocaleDateString() : "No due";
+      const whoLabel = normalizeName(c.assignee) || "Unassigned";
+      const cat = normalizeName(c.category) || "Uncategorized";
+      return `
+        <div class="gCard">
+          <img src="${c.photo}" alt="Proof" data-photo="1" />
+          <div class="gMeta">
+            <b>${escapeHtml(c.name)}</b>
+            <div class="gRow">
+              <span class="tag">👤 ${escapeHtml(whoLabel)}</span>
+              <span class="tag">📅 Due: ${escapeHtml(due)}</span>
+            </div>
+            <div class="gRow">
+              <span class="tag">🏷️ ${escapeHtml(cat)}</span>
+              <span class="tag">🕒 ${escapeHtml(when)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // ===== Archive helpers =====
+  function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+  function monthTitle(d){ return d.toLocaleDateString(undefined, { month:"long", year:"numeric" }); }
+  function toYMDFromMs(ms){
+    const d = new Date(ms);
+    return yyyyMmDd(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+  }
+  function archiveKey(chore){
+    const mode = el.calMode.value;
+    const ms = mode === "photoAt" ? (chore.photoAt || 0) : (chore.doneAt || 0);
+    return ms ? toYMDFromMs(ms) : null;
+  }
+  function archiveItemsInRange(dateStart, dateEnd){
+    const who = el.calAssignee.value;
+    const out = [];
+    chores
+      .filter(c => c.done)
+      .filter(c => who === "all" ? true : (normalizeName(c.assignee) === who))
+      .forEach(c => {
+        const k = archiveKey(c);
+        if(!k) return;
+        const d = parseDate(k);
+        if(!d) return;
+        if(d < dateStart || d > dateEnd) return;
+        out.push(c);
+      });
+    return out;
+  }
+
+  // ===== CSV export =====
+  function csvEscape(value){
+    const s = (value ?? "").toString();
+    if(/[",\n]/.test(s)) return `"${s.replaceAll('"','""')}"`;
+    return s;
+  }
+  function buildCSV(rows, headers){
+    const head = headers.map(csvEscape).join(",");
+    const body = rows.map(r => headers.map(h => csvEscape(r[h])).join(",")).join("\n");
+    return head + "\n" + body;
+  }
+  function downloadText(filename, text){
+    const blob = new Blob([text], { type:"text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+  function choreToRow(c){
+    const mode = el.calMode.value;
+    const archiveDate = archiveKey(c) || "";
+    const archiveTs = mode === "photoAt" ? (c.photoAt || c.doneAt || "") : (c.doneAt || c.photoAt || "");
+    return {
+      archive_date: archiveDate,
+      archive_timestamp: archiveTs ? new Date(archiveTs).toISOString() : "",
+      name: c.name || "",
+      assignee: normalizeName(c.assignee) || "Unassigned",
+      category: normalizeName(c.category) || "",
+      repeat: c.repeat || "none",
+      repeat_every_days: c.repeat === "everyX" ? String(Number(c.repeatEveryDays || 3)) : "",
+      priority: c.priority || "medium",
+      due: c.due || "",
+      done: c.done ? "true" : "false",
+      doneAt: c.doneAt ? new Date(c.doneAt).toISOString() : "",
+      photoAt: c.photoAt ? new Date(c.photoAt).toISOString() : "",
+      has_photo: c.photo ? "true" : "false"
+    };
+  }
+  function exportDayCSV(ymd){
+    const d = parseDate(ymd);
+    const items = chores
+      .filter(c => c.done)
+      .filter(c => (el.calAssignee.value==="all") ? true : (normalizeName(c.assignee)===el.calAssignee.value))
+      .filter(c => archiveKey(c) === ymd)
+      .sort((a,b) => ((b.doneAt||b.photoAt||0) - (a.doneAt||a.photoAt||0)));
+
+    const rows = items.map(choreToRow);
+    const headers = Object.keys(choreToRow({}));
+    const csv = buildCSV(rows, headers);
+
+    const label = d ? d.toISOString().slice(0,10) : ymd;
+    downloadText(`archive-day-${label}.csv`, csv);
+  }
+  function exportMonthCSV(){
+    const first = startOfMonth(calCursor);
+    const last = endOfMonth(calCursor);
+    const items = archiveItemsInRange(first, last).sort((a,b) => ( (b.doneAt||b.photoAt||0) - (a.doneAt||a.photoAt||0) ));
+    const rows = items.map(choreToRow);
+    const headers = Object.keys(choreToRow({}));
+    const csv = buildCSV(rows, headers);
+    const y = first.getFullYear();
+    const m = String(first.getMonth()+1).padStart(2,"0");
+    downloadText(`archive-month-${y}-${m}.csv`, csv);
+  }
+  function exportYearCSV(){
+    const y = calCursor.getFullYear();
+    const first = new Date(y,0,1);
+    const last = new Date(y,11,31);
+    const items = archiveItemsInRange(first, last).sort((a,b) => ( (b.doneAt||b.photoAt||0) - (a.doneAt||a.photoAt||0) ));
+    const rows = items.map(choreToRow);
+    const headers = Object.keys(choreToRow({}));
+    const csv = buildCSV(rows, headers);
+    downloadText(`archive-year-${y}.csv`, csv);
+  }
+
+  // ===== Calendar (Month) =====
+  function renderMonthCalendar(){
+    renderAssigneeOptions();
+
+    const who = el.calAssignee.value;
+    const first = startOfMonth(calCursor);
+    const last = endOfMonth(calCursor);
+
+    el.calTitle.textContent = monthTitle(first);
+
+    const map = new Map();
+    chores
+      .filter(c => c.done)
+      .filter(c => who === "all" ? true : (normalizeName(c.assignee) === who))
+      .forEach(c => {
+        const key = archiveKey(c);
+        if(!key) return;
+        const kDate = parseDate(key);
+        if(!kDate) return;
+        if(kDate < first || kDate > last) return;
+
+        if(!map.has(key)) map.set(key, []);
+        map.get(key).push(c);
+      });
+
+    const monIndex = (first.getDay() + 6) % 7; // Monday=0..Sunday=6
+    const daysInMonth = last.getDate();
+
+    const cells = [];
+    for(let i=0; i<monIndex; i++) cells.push({ empty:true });
+    for(let d=1; d<=daysInMonth; d++){
+      const date = new Date(first.getFullYear(), first.getMonth(), d);
+      const ymd = yyyyMmDd(date);
+      const items = map.get(ymd) || [];
+      cells.push({ empty:false, date, ymd, items });
+    }
+    while(cells.length % 7 !== 0) cells.push({ empty:true });
+    while(cells.length < 42) cells.push({ empty:true });
+
+    el.calGrid.innerHTML = cells.map(cell => {
+      if(cell.empty) return `<div class="dayCell muted" aria-hidden="true"></div>`;
+      const items = cell.items;
+      const count = items.length;
+
+      const dots = items.slice(0, 10).map(c => `<span class="pDot ${c.photo ? "" : "noPhoto"}" title="${escapeHtml(c.name)}"></span>`).join("");
+      const thumbs = items.filter(c => c.photo).slice(0, 4).map(c => `<img src="${c.photo}" data-photo="1" title="${escapeHtml(c.name)}">`).join("");
+
+      return `
+        <div class="dayCell" data-ymd="${cell.ymd}">
+          <div class="dayTop">
+            <div class="dayNum">${cell.date.getDate()}</div>
+            <div class="dayCount">${count ? `${count} done` : `—`}</div>
+          </div>
+          ${count ? `<div class="proofRow">${dots}</div>` : `<div class="proofRow"><span class="tag">No items</span></div>`}
+          ${thumbs ? `<div class="miniThumbs">${thumbs}</div>` : ``}
+        </div>
+      `;
+    }).join("");
+  }
+
+  // ===== Calendar (Year) =====
+  function renderYearView(){
+    renderAssigneeOptions();
+    const year = calCursor.getFullYear();
+    el.calTitle.textContent = `${year}`;
+
+    const who = el.calAssignee.value;
+
+    const counts = new Map(); // ymd -> count
+    chores
+      .filter(c => c.done)
+      .filter(c => who === "all" ? true : (normalizeName(c.assignee) === who))
+      .forEach(c => {
+        const key = archiveKey(c);
+        if(!key) return;
+        const d = parseDate(key);
+        if(!d) return;
+        if(d.getFullYear() !== year) return;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+
+    const months = Array.from({length:12}, (_,i)=>i);
+    const monNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const miniDow = ["M","T","W","T","F","S","S"];
+
+    el.yearGrid.innerHTML = months.map(m => {
+      const first = new Date(year, m, 1);
+      const last = new Date(year, m+1, 0);
+      const monIndex = (first.getDay() + 6) % 7;
+      const cells = [];
+      for(let i=0;i<monIndex;i++) cells.push({ empty:true });
+      for(let d=1; d<=last.getDate(); d++){
+        const date = new Date(year, m, d);
+        const ymd = yyyyMmDd(date);
+        cells.push({ empty:false, date, ymd, count: counts.get(ymd) || 0 });
+      }
+      while(cells.length % 7 !== 0) cells.push({ empty:true });
+
+      return `
+        <div class="miniCal" data-month="${m}">
+          <div class="miniHd">
+            <b>${monNames[m]}</b>
+            <span>${year}</span>
+          </div>
+          <div class="miniDow">${miniDow.map(x=>`<div>${x}</div>`).join("")}</div>
+          <div class="miniGrid">
+            ${cells.map(c => {
+              if(c.empty) return `<div class="miniDay muted"></div>`;
+              const badge = c.count ? `<span class="badge">${c.count}</span>` : ``;
+              return `<div class="miniDay" data-ymd="${c.ymd}" title="${c.ymd}">${c.date.getDate()}${badge}</div>`;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // ===== Drawer (Day details) =====
+  function openDrawer(ymd){
+    lastOpenedYMD = ymd;
+    const who = el.calAssignee.value;
+    const mode = el.calMode.value;
+
+    const d = parseDate(ymd);
+    el.drawerTitle.textContent = `Archived: ${d ? d.toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"short", day:"numeric" }) : ymd}`;
+
+    const items = chores
+      .filter(c => c.done)
+      .filter(c => who === "all" ? true : (normalizeName(c.assignee) === who))
+      .filter(c => archiveKey(c) === ymd)
+      .sort((a,b) => ((b.doneAt || b.photoAt || 0) - (a.doneAt || a.photoAt || 0)));
+
+    if(!items.length){
+      el.archList.innerHTML = `<div class="empty">No archived chores for this date.</div>`;
+    } else {
+      el.archList.innerHTML = items.map(c => {
+        const whoLabel = normalizeName(c.assignee) || "Unassigned";
+        const when = mode === "photoAt" ? fmtTime(c.photoAt || c.doneAt) : fmtTime(c.doneAt || c.photoAt);
+        const proof = c.photo ? `<div class="archThumb"><img src="${c.photo}" data-photo="1" alt="proof"></div>` : `<span class="tag">📷 No photo</span>`;
+        return `
+          <div class="archItem">
+            <div class="archMeta">
+              <div class="t">${escapeHtml(c.name)}</div>
+              <div class="s">
+                <span class="tag">👤 ${escapeHtml(whoLabel)}</span>
+                <span class="tag">🕒 ${escapeHtml(when)}</span>
+                <span class="tag">🔁 ${escapeHtml(repeatText(c))}</span>
+                ${c.category ? `<span class="tag">🏷️ ${escapeHtml(c.category)}</span>` : ``}
+              </div>
+            </div>
+            ${proof}
+          </div>
+        `;
+      }).join("");
+    }
+
+    el.drawer.classList.add("open");
+  }
+  function closeDrawer(){ el.drawer.classList.remove("open"); }
+
+  // ===== CRUD =====
+  function addChore(data){
+    chores.unshift({
+      id: uid(),
+      name: data.name.trim(),
+      assignee: normalizeName(data.assignee || ""),
+      due: data.due || "",
+      priority: data.priority || "medium",
+      repeat: data.repeat || "none",
+      repeatEveryDays: data.repeat === "everyX" ? (Number(data.repeatEveryDays || 3) || 3) : null,
+      category: normalizeName(data.category || ""),
+      done:false, doneAt:null, createdAt:Date.now(),
+      photo:null, photoAt:null
+    });
+    save(chores);
+    renderAll();
+  }
+
+  function deleteChore(id){
+    chores = chores.filter(c => c.id !== id);
+    save(chores);
+    renderAll();
+  }
+
+  function toggleDone(id, done){
+    const c = chores.find(x => x.id === id);
+    if(!c) return;
+
+    if(done){
+      c.done = true;
+      c.doneAt = Date.now();
+      if(c.repeat && c.repeat !== "none"){
+        chores.unshift({
+          ...c,
+          id: uid(),
+          due: nextDueDate(c.due, c.repeat, c.repeatEveryDays),
+          done:false, doneAt:null, createdAt:Date.now(),
+          photo:null, photoAt:null,
+          repeatEveryDays: c.repeat === "everyX" ? c.repeatEveryDays : null
+        });
+      }
+    } else {
+      c.done = false;
+      c.doneAt = null;
+    }
+    save(chores);
+    renderAll();
+  }
+
+  // Safe edit: no assignee prompt (assignee creation locked to People section)
+  function editChore(id){
+    const c = chores.find(x => x.id === id);
+    if(!c) return;
+
+    const name = prompt("Chore name:", c.name); if(name === null) return;
+    const due = prompt("Due date (YYYY-MM-DD) or blank:", c.due||""); if(due === null) return;
+    const priority = prompt("Priority: low | medium | high", c.priority); if(priority === null) return;
+    const repeat = prompt("Repeat: none | daily | weekly | monthly | everyX", c.repeat); if(repeat === null) return;
+    let repeatEveryDays = c.repeatEveryDays;
+
+    const rp = (repeat||"").toLowerCase().trim();
+    if(rp === "everyx"){
+      const x = prompt("Every how many days? (2-365)", String(Number(c.repeatEveryDays || 3))); 
+      if(x === null) return;
+      repeatEveryDays = Math.max(2, Math.min(365, Number(x || 3) || 3));
+    }
+
+    const category = prompt("Category:", c.category||""); if(category === null) return;
+
+    const pr = (priority||"").toLowerCase().trim();
+    const validRepeat = ["none","daily","weekly","monthly","everyx"];
+    c.name = normalizeName(name) || c.name;
+    c.due = normalizeName(due);
+    c.priority = ["low","medium","high"].includes(pr) ? pr : c.priority;
+    c.repeat = validRepeat.includes(rp) ? (rp === "everyx" ? "everyX" : rp) : c.repeat;
+    c.repeatEveryDays = (c.repeat === "everyX") ? repeatEveryDays : null;
+    c.category = normalizeName(category);
+
+    save(chores);
+    renderAll();
+  }
+
+  // Seed
+  function seedMaisieIfMissing(){
+    const todayStr = yyyyMmDd(todayLocal);
+    const nextWeekStr = yyyyMmDd(addDays(todayLocal, 7));
+
+    // Ensure Maisie exists in people
+    const people = loadPeople().map(normalizeName).filter(Boolean);
+    if(!people.includes("Maisie")){
+      people.push("Maisie");
+      savePeople([...new Set(people)].sort((a,b)=>a.localeCompare(b)));
+    }
+
+    const starter = [
+      { name:"Cat litter", repeat:"daily", due: todayStr, category:"Pets", priority:"medium", assignee:"Maisie" },
+      { name:"Washing pots", repeat:"daily", due: todayStr, category:"Kitchen", priority:"medium", assignee:"Maisie" },
+      { name:"Putting pots away", repeat:"daily", due: todayStr, category:"Kitchen", priority:"low", assignee:"Maisie" },
+      { name:"Putting away laundry", repeat:"daily", due: todayStr, category:"Laundry", priority:"medium", assignee:"Maisie" },
+      { name:"Bedroom tidy", repeat:"daily", due: todayStr, category:"Bedroom", priority:"low", assignee:"Maisie" },
+      { name:"Posts", repeat:"weekly", due: nextWeekStr, category:"Admin", priority:"high", assignee:"Maisie" }
+    ];
+    const keyOf = x => `${x.name.toLowerCase()}|${x.repeat}|${x.assignee.toLowerCase()}`;
+    const existing = new Set(chores.map(c => keyOf({name:c.name, repeat:c.repeat, assignee:(c.assignee||"Unassigned")})));
+    starter.forEach(s => {
+      const k = keyOf(s);
+      if(existing.has(k)) return;
+      addChore({ ...s, repeatEveryDays: null });
+    });
+  }
+
+  // Tabs
+  function showTab(tab){
+    $("tab-chores").style.display = tab === "chores" ? "" : "none";
+    $("tab-gallery").style.display = tab === "gallery" ? "" : "none";
+    $("tab-calendar").style.display = tab === "calendar" ? "" : "none";
+  }
+  el.tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      el.tabBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      showTab(btn.getAttribute("data-tab"));
+      renderAll();
+    });
+  });
+
+  // Lightbox
+  function openPhoto(src){
+    el.lbImg.src = src;
+    el.lightbox.classList.add("open");
+    el.lightbox.setAttribute("aria-hidden","false");
+  }
+  function closePhoto(){
+    el.lightbox.classList.remove("open");
+    el.lightbox.setAttribute("aria-hidden","true");
+    el.lbImg.src = "";
+  }
+  el.lbClose.addEventListener("click", closePhoto);
+  el.lightbox.addEventListener("click", (e) => { if(e.target === el.lightbox) closePhoto(); });
+
+  // Drawer
+  el.drawerClose.addEventListener("click", closeDrawer);
+  el.drawer.addEventListener("click", (e) => { if(e.target === el.drawer) closeDrawer(); });
+
+  // Export buttons
+  el.exportMonthBtn.addEventListener("click", exportMonthCSV);
+  el.exportYearBtn.addEventListener("click", exportYearCSV);
+  el.exportDayBtn.addEventListener("click", () => {
+    if(!lastOpenedYMD){ alert("Open a day first."); return; }
+    exportDayCSV(lastOpenedYMD);
+  });
+
+  // View mode toggle
+  function setViewMode(mode){
+    viewMode = mode;
+    el.viewMonthBtn.classList.toggle("active", mode==="month");
+    el.viewYearBtn.classList.toggle("active", mode==="year");
+    el.monthView.style.display = mode==="month" ? "" : "none";
+    el.yearView.style.display = mode==="year" ? "" : "none";
+    renderAll();
+  }
+  el.viewMonthBtn.addEventListener("click", () => setViewMode("month"));
+  el.viewYearBtn.addEventListener("click", () => setViewMode("year"));
+
+  // Form submit
+  el.form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = normalizeName(el.name.value);
+    if(!name) return;
+
+    addChore({
+      name,
+      assignee: el.assignee.value,
+      due: el.due.value,
+      priority: el.priority.value,
+      repeat: el.repeat.value,
+      repeatEveryDays: el.repeat.value === "everyX" ? Number(el.repeatEveryDays.value || 3) : null,
+      category: el.category.value
+    });
+
+    el.form.reset();
+    el.priority.value = "medium";
+    el.repeat.value = "none";
+    if(el.repeatEveryDays) el.repeatEveryDays.value = 3;
+    syncEveryXUI();
+    el.name.focus();
+  });
+
+  // Filters
+  ["search","statusFilter","priorityFilter","assigneeFilter","sortBy"].forEach(id => {
+    $(id).addEventListener("input", renderAll);
+    $(id).addEventListener("change", renderAll);
+  });
+  ["galleryAssignee","galleryRange","galleryType","gallerySearch"].forEach(id => {
+    $(id).addEventListener("input", renderAll);
+    $(id).addEventListener("change", renderAll);
+  });
+  el.calAssignee.addEventListener("change", renderAll);
+  el.calMode.addEventListener("change", renderAll);
+
+  // Calendar controls
+  el.calPrev.addEventListener("click", () => { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()-1, 1); renderAll(); });
+  el.calNext.addEventListener("click", () => { calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1); renderAll(); });
+  el.calToday.addEventListener("click", () => { calCursor = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), 1); renderAll(); });
+
+  // Click actions + calendar clicks
+  document.addEventListener("click", (e) => {
+    const img = e.target.closest("img[data-photo]");
+    if(img && img.src){ openPhoto(img.src); return; }
+
+    const day = e.target.closest(".dayCell[data-ymd]");
+    if(day){ openDrawer(day.getAttribute("data-ymd")); return; }
+
+    const mini = e.target.closest(".miniDay[data-ymd]");
+    if(mini){ openDrawer(mini.getAttribute("data-ymd")); return; }
+
+    const btn = e.target.closest("button[data-action]");
+    if(!btn) return;
+    const item = e.target.closest(".item");
+    if(!item) return;
+    const id = item.getAttribute("data-id");
+    const action = btn.getAttribute("data-action");
+
+    if(action === "delete"){ if(confirm("Delete this chore?")) deleteChore(id); }
+    else if(action === "done"){ toggleDone(id, true); }
+    else if(action === "undo"){ toggleDone(id, false); }
+    else if(action === "edit"){ editChore(id); }
+  });
+
+  el.seedBtn.addEventListener("click", () => { seedMaisieIfMissing(); renderAll(); });
+  el.resetBtn.addEventListener("click", () => {
+    if(confirm("This will delete ALL chores and photos. Continue?")){
+      chores = [];
+      save(chores);
+      renderAll();
+    }
+  });
+
+  window.addEventListener("storage", (ev) => { if(ev.key === KEY || ev.key === PEOPLE_KEY) renderAll(); });
+
+  function renderAll(){
+    chores = load();
+    renderAssigneeOptions();
+    renderStatsAndList();
+    renderGallery();
+    if(viewMode === "month"){
+      renderMonthCalendar();
+    } else {
+      renderYearView();
+    }
+  }
+
+  // Init
+  showTab("chores");
+  setViewMode("month");
+  syncEveryXUI();
+  renderAll();
+})();
+</script>
+</body>
+</html>
