@@ -4,6 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Chores Login</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1020">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <!-- Google Sign-In -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <style>
     :root{
       --bg:#0b1020; --text:#e8ecff; --muted:#a9b4e6; --line:rgba(255,255,255,.12);
@@ -24,7 +34,7 @@
       padding:22px;
     }
     .card{
-      width:min(920px, 100%);
+      width:min(980px, 100%);
       border:1px solid var(--line);
       border-radius:var(--radius);
       background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
@@ -39,15 +49,6 @@
     }
     h1{margin:0;font-size:20px;letter-spacing:.3px}
     .sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.35}
-    .pill{
-      border:1px solid rgba(96,165,250,.45);
-      background:rgba(96,165,250,.14);
-      color:var(--text);
-      padding:8px 10px;
-      border-radius:999px;
-      font-size:12px;
-      display:inline-flex; gap:8px; align-items:center;
-    }
     .grid{display:grid; grid-template-columns:1fr 1fr; gap:0;}
     @media (max-width:860px){ .grid{grid-template-columns:1fr} }
     .pane{padding:18px;border-right:1px solid var(--line);}
@@ -55,19 +56,6 @@
     .pane:last-child{border-right:none;border-bottom:none}
     .pane h2{margin:0 0 10px;font-size:14px;letter-spacing:.2px}
     .pane p{margin:0 0 14px;color:var(--muted);font-size:12.5px;line-height:1.4}
-    label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted);margin-bottom:10px}
-    input,select,button{font:inherit;color:var(--text)}
-    input,select{
-      width:100%;
-      padding:11px 12px;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:rgba(0,0,0,.18);
-      outline:none;
-    }
-    input:focus,select:focus{border-color:rgba(96,165,250,.55)}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (max-width:460px){ .row{grid-template-columns:1fr} }
     .btn{
       border:1px solid var(--line);
       background:rgba(255,255,255,.05);
@@ -78,18 +66,12 @@
       display:inline-flex; align-items:center; justify-content:center; gap:8px;
       box-shadow:0 10px 22px rgba(0,0,0,.25);
       width:100%;
+      color:var(--text);
+      font:inherit;
     }
     .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.08)}
-    .btn:active{transform:translateY(0px)}
-    .btn.primary{border-color:rgba(96,165,250,.50);background:rgba(96,165,250,.16)}
     .btn.ok{border-color:rgba(54,211,153,.45);background:rgba(54,211,153,.12)}
     .btn.danger{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12)}
-    .hint{
-      margin-top:10px;
-      color:rgba(169,180,230,.75);
-      font-size:12px;
-      line-height:1.35;
-    }
     .msg{
       margin-top:12px;
       padding:10px 12px;
@@ -118,233 +100,143 @@
       padding:2px 6px;
       border-radius:10px;
     }
-    .tinyBtn{
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(0,0,0,.18);
-      border-radius:12px;
-      padding:8px 10px;
-      cursor:pointer;
-      color:var(--text);
-    }
+    .gbtnWrap{display:flex;justify-content:flex-start}
   </style>
 </head>
+
 <body>
   <div class="card">
     <div class="top">
       <div>
-        <h1>Chores Dashboard Login</h1>
-        <div class="sub">Admin redirects to <code>admin maise progress calander.html</code>. End user redirects to <code>maise c.html</code>.</div>
+        <h1>Chores Dashboard</h1>
+        <div class="sub">
+          Admin uses Google Sign‑In (no passwords). End user opens Maisie’s dashboard.
+        </div>
       </div>
-      <div class="pill">🔐 Local login (client-side)</div>
     </div>
 
     <div class="grid">
-      <!-- Admin -->
       <div class="pane">
         <h2>Admin</h2>
-        <p>Full control dashboard (admin-only).</p>
+        <p>Sign in with Google. You will be redirected to the admin dashboard.</p>
 
-        <label>Admin password
-          <input type="password" id="adminPass" placeholder="Enter admin password" autocomplete="current-password" />
-        </label>
-
-        <div class="row">
-          <button class="btn primary" id="adminLoginBtn">Login as Admin →</button>
-          <button class="btn danger" id="setAdminPassBtn" type="button">Set/Change Password</button>
+        <div class="gbtnWrap">
+          <div id="googleAdminBtn"></div>
         </div>
 
-        <div class="hint">
-          Redirect target: <code id="adminTargetLabel"></code><br/>
-          Password is stored in <code>localStorage</code> (not secure for real-world use).
-        </div>
-
+        <button class="btn danger" id="adminLogoutBtn" type="button" style="margin-top:10px;">Logout</button>
         <div class="msg" id="adminMsg"></div>
+
+        <div class="sub" style="margin-top:10px">
+          Admin page: <code>admin maise progress calander.html</code>
+        </div>
       </div>
 
-      <!-- End user -->
       <div class="pane">
         <h2>End User</h2>
-        <p>Open the Maisie dashboard.</p>
+        <p>Open Maisie’s dashboard.</p>
 
-        <label>User
-          <select id="userSelect">
-            <option value="Maisie" selected>Maisie</option>
-          </select>
-        </label>
-
-        <div class="row">
-          <button class="btn ok" id="userLoginBtn">Open dashboard →</button>
-          <button class="btn" id="refreshPeopleBtn" type="button">↻ Refresh People</button>
-        </div>
-
-        <div class="hint">
-          Redirect target: <code id="userTargetLabel"></code><br/>
-          (This login is optional — it just routes you.)
-        </div>
-
+        <button class="btn ok" id="userLoginBtn" type="button">Open Maisie dashboard →</button>
         <div class="msg" id="userMsg"></div>
+
+        <div class="sub" style="margin-top:10px">
+          User page: <code>maise c.html</code>
+        </div>
       </div>
     </div>
 
     <div class="footer">
       <div>
-        Rename files? Update <code>ADMIN_PAGE</code> and <code>USER_PAGE</code> in the script.
+        PWA: use browser menu → “Install app”.
       </div>
-      <button class="tinyBtn" id="clearSessionBtn" type="button">Clear login session</button>
+      <div>
+        Offline works for pages; syncing needs internet.
+      </div>
     </div>
   </div>
 
 <script>
-(() => {
-  // ====== YOUR FILENAMES (as requested) ======
-  // NOTE: spaces in filenames work, but are awkward on the web.
-  // If you can, rename to admin-maisie-progress-calendar.html and maisie-c.html.
-  const ADMIN_PAGE = "admin maise progress calander.html";
-  const USER_PAGE  = "maise c.html";
+/************ CONFIG (FILL THESE) ************/
+const GOOGLE_CLIENT_ID = "268475007338-dj50bjnkclghg3eaiv3bivh4qu8325mn.apps.googleusercontent.com";
+const ADMIN_EMAIL_ALLOW = "kimwilson521@gmail.com";
+/*********************************************/
 
-  // ====== STORAGE KEYS ======
-  const PEOPLE_KEY = "chores_people_v1";
-  const ADMIN_PASS_KEY = "chores_admin_password_v1";
-  const SESSION_KEY = "chores_session_v1"; // { role:'admin'|'user', name, at }
+// Files
+const ADMIN_PAGE = "admin maise progress calander.html";
+const USER_PAGE  = "maise c.html";
 
-  const $ = (id) => document.getElementById(id);
+// Store token so admin page can verify
+const TOKEN_KEY = "admin_id_token_v1";
 
-  const el = {
-    adminPass: $("adminPass"),
-    adminLoginBtn: $("adminLoginBtn"),
-    setAdminPassBtn: $("setAdminPassBtn"),
-    adminMsg: $("adminMsg"),
+const adminMsg = document.getElementById("adminMsg");
+const userMsg = document.getElementById("userMsg");
 
-    userSelect: $("userSelect"),
-    userLoginBtn: $("userLoginBtn"),
-    refreshPeopleBtn: $("refreshPeopleBtn"),
-    userMsg: $("userMsg"),
+function showMsg(box, text, kind){
+  box.className = "msg" + (kind ? " " + kind : "");
+  box.textContent = text;
+  box.style.display = "block";
+}
+function clearMsg(box){ box.style.display="none"; box.textContent=""; box.className="msg"; }
 
-    adminTargetLabel: $("adminTargetLabel"),
-    userTargetLabel: $("userTargetLabel"),
+async function verifyTokenClientSide(idToken){
+  // Verifies signature + returns decoded claims via Google tokeninfo endpoint
+  const url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(idToken);
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("Token verify failed");
+  const data = await res.json();
+  if(data.aud !== GOOGLE_CLIENT_ID) throw new Error("Wrong Google Client ID");
+  const email = (data.email || "").toLowerCase();
+  if(email !== ADMIN_EMAIL_ALLOW.toLowerCase()) throw new Error("Not authorised admin");
+  return data;
+}
 
-    clearSessionBtn: $("clearSessionBtn"),
-  };
-
-  el.adminTargetLabel.textContent = ADMIN_PAGE;
-  el.userTargetLabel.textContent = USER_PAGE;
-
-  function normalizeName(s){
-    return (s || "").trim().replace(/\s+/g, " ");
-  }
-  function loadPeople(){
-    try { return JSON.parse(localStorage.getItem(PEOPLE_KEY) || "[]"); }
-    catch { return []; }
-  }
-  function saveSession(obj){
-    localStorage.setItem(SESSION_KEY, JSON.stringify(obj));
-  }
-  function showMsg(box, text, kind){
-    box.className = "msg" + (kind ? " " + kind : "");
-    box.textContent = text;
-    box.style.display = "block";
-  }
-  function clearMsg(box){
-    box.style.display = "none";
-    box.textContent = "";
-    box.className = "msg";
+window.addEventListener("load", () => {
+  // Auto-redirect if token already present + valid
+  const existing = sessionStorage.getItem(TOKEN_KEY);
+  if(existing){
+    verifyTokenClientSide(existing).then(()=>location.href=ADMIN_PAGE).catch(()=>sessionStorage.removeItem(TOKEN_KEY));
   }
 
-  // Optional: refresh people list, but still default to Maisie
-  function populatePeople(){
-    const people = loadPeople().map(normalizeName).filter(Boolean);
-    const hasMaisie = people.some(p => p.toLowerCase() === "maisie");
-    const list = hasMaisie ? ["Maisie"] : ["Maisie"];
-
-    el.userSelect.innerHTML = list.map(p => `<option value="${p}">${p}</option>`).join("");
-    clearMsg(el.userMsg);
-  }
-
-  function getAdminPass(){
-    return localStorage.getItem("chores_admin_password_v1") || "";
-  }
-  function setAdminPass(newPass){
-    localStorage.setItem("chores_admin_password_v1", newPass);
-  }
-
-  // Admin: set/change password
-  el.setAdminPassBtn.addEventListener("click", () => {
-    clearMsg(el.adminMsg);
-    const current = getAdminPass();
-
-    if(current){
-      const old = prompt("Enter current admin password:");
-      if(old === null) return;
-      if(old !== current){
-        showMsg(el.adminMsg, "Wrong current password.", "bad");
-        return;
+  // Render Google button
+  if(window.google?.accounts?.id){
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: async (resp) => {
+        try{
+          const idToken = resp.credential;
+          await verifyTokenClientSide(idToken);
+          sessionStorage.setItem(TOKEN_KEY, idToken);
+          location.href = ADMIN_PAGE;
+        }catch(err){
+          console.error(err);
+          sessionStorage.removeItem(TOKEN_KEY);
+          showMsg(adminMsg, String(err?.message || err), "bad");
+        }
       }
-    }
+    });
 
-    const p1 = prompt("Set admin password (min 4 chars):");
-    if(p1 === null) return;
-    const pass = (p1 || "").trim();
-    if(pass.length < 4){
-      showMsg(el.adminMsg, "Password must be at least 4 characters.", "bad");
-      return;
-    }
-    const p2 = prompt("Confirm admin password:");
-    if(p2 === null) return;
-    if(p2.trim() !== pass){
-      showMsg(el.adminMsg, "Passwords did not match.", "bad");
-      return;
-    }
+    google.accounts.id.renderButton(
+      document.getElementById("googleAdminBtn"),
+      { theme: "outline", size: "large", text: "signin_with" }
+    );
+  } else {
+    showMsg(adminMsg, "Google Sign‑In failed to load.", "bad");
+  }
+});
 
-    setAdminPass(pass);
-    showMsg(el.adminMsg, "Admin password saved.", "ok");
-    el.adminPass.value = "";
-  });
+document.getElementById("adminLogoutBtn").addEventListener("click", () => {
+  sessionStorage.removeItem(TOKEN_KEY);
+  showMsg(adminMsg, "Logged out.", "ok");
+});
 
-  // Admin: login
-  el.adminLoginBtn.addEventListener("click", () => {
-    clearMsg(el.adminMsg);
+document.getElementById("userLoginBtn").addEventListener("click", () => {
+  location.href = USER_PAGE;
+});
 
-    const stored = getAdminPass();
-    if(!stored){
-      showMsg(el.adminMsg, "No admin password set yet. Click “Set/Change Password” first.", "bad");
-      return;
-    }
-
-    const entered = el.adminPass.value || "";
-    if(entered !== stored){
-      showMsg(el.adminMsg, "Incorrect password.", "bad");
-      return;
-    }
-
-    saveSession({ role:"admin", at: Date.now() });
-    window.location.href = ADMIN_PAGE;
-  });
-
-  // Enter key submits admin login
-  el.adminPass.addEventListener("keydown", (e) => {
-    if(e.key === "Enter") el.adminLoginBtn.click();
-  });
-
-  // User: login (Maisie)
-  el.userLoginBtn.addEventListener("click", () => {
-    clearMsg(el.userMsg);
-    const name = normalizeName(el.userSelect.value || "Maisie") || "Maisie";
-    saveSession({ role:"user", name, at: Date.now() });
-    window.location.href = USER_PAGE;
-  });
-
-  el.refreshPeopleBtn.addEventListener("click", populatePeople);
-
-  // Clear session
-  el.clearSessionBtn.addEventListener("click", () => {
-    localStorage.removeItem(SESSION_KEY);
-    showMsg(el.userMsg, "Login session cleared.", "ok");
-    showMsg(el.adminMsg, "Login session cleared.", "ok");
-  });
-
-  // Init
-  populatePeople();
-})();
+// PWA service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
 </script>
 </body>
 </html>
