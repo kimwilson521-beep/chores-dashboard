@@ -232,11 +232,14 @@ function fmtTimeIso(iso){
 }
 function priorityScore(p){ return p==="high"?3:p==="medium"?2:1; }
 
-function api(action, payload){
-  return fetch(WEBAPP_URL, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ action, ...payload })
+function api(action, payload = {}){
+    const params = new URLSearchParams();
+    params.set("action", action);
+    for(const [k,v] of Object.entries(payload)){
+      if(v !== undefined && v !== null) params.set(k, String(v));
+    }
+    return fetch(WEBAPP_URL, { method:"POST", body: params }).then(r=>r.json());
+  })
   }).then(r=>r.json());
 }
 function fileToBase64(file){
