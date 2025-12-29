@@ -644,7 +644,7 @@
   
   // ===== Google + Sheets Sync CONFIG (FILL THESE) =====
   const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwaa0cARwT_CZKN-6o_QE7HYWXY2NZReMreQK7xu53aPOzMz-696cBaCLppzAc2nLmH/exec";
-  const GOOGLE_CLIENT_ID = "268475007338-dj50bjnkclghg3eaiv3bivh4qu8325mn.apps.googleusercontent.com";
+  const GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
   const ADMIN_EMAIL_ALLOW = "kimwilson521@gmail.com";
   const TOKEN_KEY = "admin_id_token_v1";
   // ====================================================
@@ -670,11 +670,14 @@
   }
 
   function api(action, payload){
-    return fetch(WEBAPP_URL, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ action, ...payload })
-    }).then(r=>r.json());
+    const params = new URLSearchParams();
+    params.set("action", action);
+    if(payload){
+      for(const [k,v] of Object.entries(payload)){
+        if(v !== undefined && v !== null) params.set(k, String(v));
+      }
+    }
+    return fetch(WEBAPP_URL, { method:"POST", body: params }).then(r=>r.json());
   }
 
   function normalizeFromSheet(x){
