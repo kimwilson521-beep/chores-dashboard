@@ -187,441 +187,324 @@
   <img id="lbImg" alt="Proof photo" />
 </div>
 
-<script type="module">
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+<script>
+/************ CONFIG (FILL THESE) ************/
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwaa0cARwT_CZKN-6o_QE7HYWXY2NZReMreQK7xu53aPOzMz-696cBaCLppzAc2nLmH/exec";
+const ASSIGNEE = "Maisie";
+/*********************************************/
 
-  /************ CONFIG (YOU MUST FILL THESE) ************/
-  const SUPABASE_URL = "PASTE_SUPABASE_PROJECT_URL";
-  const SUPABASE_ANON_KEY = "PASTE_SUPABASE_ANON_PUBLIC_KEY";
+const TOKEN_KEY = "admin_id_token_v1"; // not needed for Maisie actions
+const $ = (id) => document.getElementById(id);
+const el = {
+  stats: $("stats"),
+  list: $("list"),
+  search: $("search"),
+  filterRepeat: $("filterRepeat"),
+  filterStatus: $("filterStatus"),
+  sortBy: $("sortBy"),
+  refreshBtn: $("refreshBtn"),
+  signOutBtn: $("signOutBtn"),
+  msg: $("msg"),
+  lightbox: $("lightbox"),
+  lbImg: $("lbImg"),
+  lbClose: $("lbClose"),
+};
 
-  // Storage bucket name created in Supabase Storage
-  const PROOF_BUCKET = "proof";
+let chores = [];
+const pendingFiles = new Map(); // choreId -> File
 
-  // Assignee this page is for:
-  const ASSIGNEE = "Maisie";
-  /******************************************************/
+function showMsg(text, kind=""){
+  el.msg.className = "msg" + (kind ? " " + kind : "");
+  el.msg.textContent = text;
+  el.msg.style.display = "block";
+}
+function clearMsg(){ el.msg.style.display = "none"; el.msg.textContent = ""; el.msg.className="msg"; }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+function escapeHtml(s){
+  return (s ?? "").toString()
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+}
+function fmtTimeIso(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : d.toLocaleString();
+}
+function priorityScore(p){ return p==="high"?3:p==="medium"?2:1; }
 
-  const $ = (id) => document.getElementById(id);
-  const el = {
-    stats: $("stats"),
-    list: $("list"),
-    search: $("search"),
-    filterRepeat: $("filterRepeat"),
-    filterStatus: $("filterStatus"),
-    sortBy: $("sortBy"),
-    refreshBtn: $("refreshBtn"),
-    signOutBtn: $("signOutBtn"),
-    msg: $("msg"),
-    lightbox: $("lightbox"),
-    lbImg: $("lbImg"),
-    lbClose: $("lbClose"),
+function api(action, payload){
+  return fetch(WEBAPP_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ action, ...payload })
+  }).then(r=>r.json());
+}
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function normalizeFromSheet(x){
+  // Sheet returns strings; normalize types
+  const doneStr = String(x.done ?? "").toLowerCase();
+  return {
+    ...x,
+    done: doneStr === "true" || x.done === true,
+    repeat: (x.repeat || "none") || "none",
+    repeatEveryDays: x.repeatEveryDays ? Number(x.repeatEveryDays) : null,
+    photoUrl: x.photoUrl || "",
+    doneAt: x.doneAt || "",
+    photoAt: x.photoAt || ""
   };
+}
 
-  let chores = [];
+async function loadChores(){
+  const out = await api("listChores", { assignee: ASSIGNEE });
+  if(!out.ok) throw new Error(out.error || "listChores failed");
+  chores = (out.items || []).map(normalizeFromSheet);
+}
 
-  function showMsg(text, kind=""){
-    el.msg.className = "msg" + (kind ? " " + kind : "");
-    el.msg.textContent = text;
-    el.msg.style.display = "block";
-  }
-  function clearMsg(){ el.msg.style.display = "none"; el.msg.textContent = ""; el.msg.className="msg"; }
+async function completeChoreWithPhoto(choreId, file){
+  const base64 = await fileToBase64(file);
+  const out = await api("completeChore", {
+    choreId,
+    assignee: ASSIGNEE,
+    base64,
+    mimeType: file.type || "image/jpeg",
+    filename: `proof_${Date.now()}.jpg`
+  });
+  if(!out.ok) throw new Error(out.error || "completeChore failed");
+  return out;
+}
 
-  function normalize(s){ return (s||"").trim().replace(/\s+/g," "); }
-  function pad(n){ return String(n).padStart(2,"0"); }
-  function yyyyMmDd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
-  function parseDate(s){
-    if(!s) return null;
-    const [y,m,d]=s.split("-").map(Number);
-    if(!y||!m||!d) return null;
-    return new Date(y,m-1,d);
-  }
-  function addDays(date, days){ const d=new Date(date); d.setDate(d.getDate()+days); return d; }
-  function addMonths(date, months){
-    const d=new Date(date); const day=d.getDate();
-    d.setMonth(d.getMonth()+months);
-    if(d.getDate()!==day) d.setDate(0);
-    return d;
-  }
-  function nextDueDate(currentDueStr, repeat, repeatEveryDays){
-    const base = parseDate(currentDueStr) || new Date();
-    let next = null;
-    if(repeat === "daily") next = addDays(base, 1);
-    if(repeat === "weekly") next = addDays(base, 7);
-    if(repeat === "monthly") next = addMonths(base, 1);
-    if(repeat === "everyX"){
-      const n = Math.max(2, Math.min(365, Number(repeatEveryDays || 3) || 3));
-      next = addDays(base, n);
+function repeatText(c){
+  const r = c.repeat || "none";
+  if(r==="none") return "No repeat";
+  if(r==="daily") return "Daily";
+  if(r==="weekly") return "Weekly";
+  if(r==="monthly") return "Monthly";
+  if(r==="everyX") return `Every ${Number(c.repeatEveryDays || 3)} days`;
+  return r;
+}
+
+function computeProgress(){
+  const today = new Date();
+  const todayYMD = today.toISOString().slice(0,10);
+
+  const overallTotal = chores.length;
+  const overallDone = chores.filter(c => c.done).length;
+  const overallPct = overallTotal ? Math.round((overallDone/overallTotal)*100) : 0;
+
+  const dailyOpenDueToday = chores.filter(c => !c.done && c.repeat==="daily" && (!c.due || c.due===todayYMD)).length;
+  const dailyDoneToday = chores.filter(c => c.done && c.repeat==="daily" && String(c.doneAt||"").slice(0,10)===todayYMD).length;
+  const dailyTotalToday = dailyOpenDueToday + dailyDoneToday;
+  const dailyPct = dailyTotalToday ? Math.round((dailyDoneToday/dailyTotalToday)*100) : 0;
+
+  // week start Monday
+  const day = (today.getDay()+6)%7;
+  const mon = new Date(today); mon.setHours(0,0,0,0); mon.setDate(mon.getDate()-day);
+  const monMs = mon.getTime();
+
+  const weeklyOpen = chores.filter(c => !c.done && c.repeat==="weekly").length;
+  const weeklyDoneThisWeek = chores.filter(c => c.done && c.repeat==="weekly" && new Date(c.doneAt||0).getTime()>=monMs).length;
+  const weeklyTotal = weeklyOpen + weeklyDoneThisWeek;
+  const weeklyPct = weeklyTotal ? Math.round((weeklyDoneThisWeek/weeklyTotal)*100) : 0;
+
+  return { overallPct, overallDone, overallTotal, dailyPct, dailyDoneToday, dailyTotalToday, weeklyPct, weeklyDoneThisWeek, weeklyTotal };
+}
+
+function sortItems(items){
+  const mode = el.sortBy.value;
+  const dueKey = c => (c.due ? (new Date(c.due+"T00:00:00").getTime() || Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY);
+  const copy=[...items];
+  if(mode==="dueAsc") copy.sort((a,b)=> dueKey(a)-dueKey(b));
+  else if(mode==="priority") copy.sort((a,b)=> priorityScore(b.priority)-priorityScore(a.priority) || dueKey(a)-dueKey(b));
+  else if(mode==="newest") copy.sort((a,b)=> (new Date(b.doneAt||0).getTime() - new Date(a.doneAt||0).getTime()));
+  return copy;
+}
+
+function filtered(){
+  const q = el.search.value.trim().toLowerCase();
+  const rep = el.filterRepeat.value;
+  const st = el.filterStatus.value;
+
+  return chores.filter(c => {
+    if(q){
+      const blob = `${c.name} ${c.category||""}`.toLowerCase();
+      if(!blob.includes(q)) return false;
     }
-    return next ? yyyyMmDd(next) : "";
-  }
-  function priorityScore(p){ return p==="high"?3:p==="medium"?2:1; }
-
-  function repeatText(c){
-    if((c.repeat||"none")==="none") return "No repeat";
-    if(c.repeat==="daily") return "Daily";
-    if(c.repeat==="weekly") return "Weekly";
-    if(c.repeat==="monthly") return "Monthly";
-    if(c.repeat==="everyX") return `Every ${Number(c.repeat_every_days || 3)} days`;
-    return c.repeat;
-  }
-
-  function photoUrlFromPath(path){
-    if(!path) return "";
-    // Bucket is public (fastest). If you made it private later, switch to signed URLs.
-    const { data } = supabase.storage.from(PROOF_BUCKET).getPublicUrl(path);
-    return data?.publicUrl || "";
-  }
-
-  async function loadFromDB(){
-    const { data, error } = await supabase
-      .from("chores")
-      .select("*")
-      .eq("assignee", ASSIGNEE)
-      .order("created_at", { ascending:false });
-
-    if(error){
-      console.error(error);
-      showMsg("Could not load chores. Check Supabase config + table name.", "bad");
-      return [];
+    if(rep !== "all" && (c.repeat || "none") !== rep) return false;
+    if(st !== "all"){
+      if(st === "open" && c.done) return false;
+      if(st === "done" && !c.done) return false;
     }
-    return data || [];
+    return true;
+  });
+}
+
+function renderStats(){
+  const s = computeProgress();
+  el.stats.innerHTML = `
+    <div class="stat">
+      <div class="k">Overall completion</div>
+      <div class="v">${s.overallPct}%</div>
+      <div class="barOuter"><div class="barInner" style="width:${s.overallPct}%"></div></div>
+      <div class="k">${s.overallDone} done • ${s.overallTotal} total</div>
+    </div>
+    <div class="stat">
+      <div class="k">Daily completion (today)</div>
+      <div class="v">${s.dailyPct}%</div>
+      <div class="barOuter"><div class="barInner" style="width:${s.dailyPct}%"></div></div>
+      <div class="k">${s.dailyDoneToday} done • ${s.dailyTotalToday} total</div>
+    </div>
+    <div class="stat">
+      <div class="k">Weekly completion (this week)</div>
+      <div class="v">${s.weeklyPct}%</div>
+      <div class="barOuter"><div class="barInner" style="width:${s.weeklyPct}%"></div></div>
+      <div class="k">${s.weeklyDoneThisWeek} done • ${s.weeklyTotal} total</div>
+    </div>
+  `;
+}
+
+function renderList(){
+  const items = sortItems(filtered());
+  if(!items.length){
+    el.list.innerHTML = `<div class="empty">No chores found.</div>`;
+    return;
   }
 
-  async function uploadProof(file, choreId){
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const safeExt = ext.length > 8 ? "jpg" : ext;
-    const path = `${ASSIGNEE.toLowerCase()}/${choreId}/${Date.now()}.${safeExt}`;
+  el.list.innerHTML = items.map(c => {
+    const rep = repeatText(c);
+    const dueLabel = c.due ? new Date(c.due+"T00:00:00").toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "No due date";
+    const pr = (c.priority||"medium");
+    const hasPhoto = Boolean(c.photoUrl);
 
-    const { error } = await supabase.storage
-      .from(PROOF_BUCKET)
-      .upload(path, file, { upsert: true, cacheControl: "3600" });
-
-    if(error) throw error;
-    return path;
-  }
-
-  async function completeChoreWithPhoto(chore, file){
-    // 1) upload photo
-    const path = await uploadProof(file, chore.id);
-
-    // 2) mark done
-    const nowIso = new Date().toISOString();
-    const { error } = await supabase
-      .from("chores")
-      .update({
-        done: true,
-        done_at: nowIso,
-        photo_path: path,
-        photo_at: nowIso
-      })
-      .eq("id", chore.id);
-
-    if(error) throw error;
-
-    // 3) if repeating -> create next instance
-    const rep = (chore.repeat || "none");
-    if(rep !== "none"){
-      const nextDue = nextDueDate(chore.due, rep, chore.repeat_every_days);
-      const { error: insErr } = await supabase
-        .from("chores")
-        .insert([{
-          name: chore.name,
-          assignee: chore.assignee,
-          due: nextDue || null,
-          priority: chore.priority || "medium",
-          repeat: rep,
-          repeat_every_days: rep === "everyX" ? (Number(chore.repeat_every_days || 3) || 3) : null,
-          category: chore.category || null,
-          done: false,
-          done_at: null,
-          photo_path: null,
-          photo_at: null
-        }]);
-
-      if(insErr) console.warn("Repeat insert failed:", insErr);
-    }
-  }
-
-  function computeProgress(){
-    const today = new Date();
-    const todayYMD = yyyyMmDd(today);
-
-    const open = chores.filter(c => !c.done);
-    const done = chores.filter(c => c.done);
-
-    // Daily progress: daily chores due today (or due blank but daily)
-    const dailyAll = chores.filter(c => (c.repeat==="daily") && (!c.done) ).length
-      + chores.filter(c => (c.repeat==="daily") && c.done && yyyyMmDd(new Date(c.done_at || 0))===todayYMD ).length;
-
-    // More practical daily metric: daily chores currently open due today
-    const dailyOpenDueToday = chores.filter(c => !c.done && c.repeat==="daily" && (!c.due || c.due===todayYMD)).length;
-    const dailyDoneToday = chores.filter(c => c.done && c.repeat==="daily" && yyyyMmDd(new Date(c.done_at || c.photo_at || 0))===todayYMD).length;
-    const dailyTotalToday = dailyOpenDueToday + dailyDoneToday;
-    const dailyPct = dailyTotalToday ? Math.round((dailyDoneToday/dailyTotalToday)*100) : 0;
-
-    // Weekly progress: chores marked weekly completed this week (Mon..Sun)
-    const day = (today.getDay()+6)%7; // Mon=0
-    const mon = addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), -day);
-    const monMs = mon.getTime();
-
-    const weeklyOpen = chores.filter(c => !c.done && c.repeat==="weekly").length;
-    const weeklyDoneThisWeek = chores.filter(c => c.done && c.repeat==="weekly" && (new Date(c.done_at || 0).getTime() >= monMs)).length;
-    const weeklyTotal = weeklyOpen + weeklyDoneThisWeek;
-    const weeklyPct = weeklyTotal ? Math.round((weeklyDoneThisWeek/weeklyTotal)*100) : 0;
-
-    // Overall
-    const overallTotal = chores.length;
-    const overallDone = done.length;
-    const overallPct = overallTotal ? Math.round((overallDone/overallTotal)*100) : 0;
-
-    return {
-      overallPct, overallDone, overallTotal,
-      dailyPct, dailyDoneToday, dailyTotalToday,
-      weeklyPct, weeklyDoneThisWeek, weeklyTotal
-    };
-  }
-
-  function statusDot(c){
-    if(c.done) return "ok";
-    const due = c.due ? parseDate(c.due) : null;
-    if(!due) return "";
-    const t = new Date(); t.setHours(0,0,0,0);
-    due.setHours(0,0,0,0);
-    if(due < t) return "bad";
-    if(due.getTime() === t.getTime()) return "warn";
-    return "";
-  }
-
-  function sortItems(items){
-    const mode = el.sortBy.value;
-    const dueKey = c => (c.due ? (parseDate(c.due)?.getTime() ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY);
-
-    const copy = [...items];
-    if(mode==="dueAsc") copy.sort((a,b)=> dueKey(a)-dueKey(b));
-    else if(mode==="priority") copy.sort((a,b)=> priorityScore(b.priority)-priorityScore(a.priority) || dueKey(a)-dueKey(b));
-    else if(mode==="newest") copy.sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
-    return copy;
-  }
-
-  function filtered(){
-    const q = el.search.value.trim().toLowerCase();
-    const rep = el.filterRepeat.value;
-    const st = el.filterStatus.value;
-
-    return chores.filter(c => {
-      if(q){
-        const blob = `${c.name} ${c.category||""}`.toLowerCase();
-        if(!blob.includes(q)) return false;
-      }
-      if(rep !== "all" && (c.repeat || "none") !== rep) return false;
-      if(st !== "all"){
-        if(st === "open" && c.done) return false;
-        if(st === "done" && !c.done) return false;
-      }
-      return true;
-    });
-  }
-
-  function renderStats(){
-    const s = computeProgress();
-    el.stats.innerHTML = `
-      <div class="stat">
-        <div class="k">Overall completion</div>
-        <div class="v">${s.overallPct}%</div>
-        <div class="barOuter"><div class="barInner" style="width:${s.overallPct}%"></div></div>
-        <div class="k">${s.overallDone} done • ${s.overallTotal} total</div>
-      </div>
-      <div class="stat">
-        <div class="k">Daily completion (today)</div>
-        <div class="v">${s.dailyPct}%</div>
-        <div class="barOuter"><div class="barInner" style="width:${s.dailyPct}%"></div></div>
-        <div class="k">${s.dailyDoneToday} done • ${s.dailyTotalToday} total</div>
-      </div>
-      <div class="stat">
-        <div class="k">Weekly completion (this week)</div>
-        <div class="v">${s.weeklyPct}%</div>
-        <div class="barOuter"><div class="barInner" style="width:${s.weeklyPct}%"></div></div>
-        <div class="k">${s.weeklyDoneThisWeek} done • ${s.weeklyTotal} total</div>
-      </div>
-    `;
-  }
-
-  function renderList(){
-    const items = sortItems(filtered());
-    if(!items.length){
-      el.list.innerHTML = `<div class="empty">No chores found.</div>`;
-      return;
-    }
-
-    el.list.innerHTML = items.map(c => {
-      const dot = statusDot(c);
-      const dueLabel = c.due ? (parseDate(c.due)?.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) || "—") : "No due date";
-      const pr = (c.priority||"medium");
-      const prDot = pr==="high" ? "bad" : pr==="medium" ? "warn" : "ok";
-      const rep = repeatText(c);
-      const canDone = !c.done; // Done button appears only if open (but still needs photo selected)
-      const photoUrl = photoUrlFromPath(c.photo_path);
-      const hasPhoto = Boolean(photoUrl);
-
-      return `
-        <div class="item" data-id="${c.id}">
-          <div class="meta">
-            <div class="title">
-              <span class="name">${escapeHtml(c.name)}</span>
-              ${c.done ? `<span class="tag"><span class="dot ok"></span> Done</span>` : `<span class="tag"><span class="dot ${dot}"></span> Open</span>`}
-              <span class="tag"><span class="dot ${prDot}"></span> ${escapeHtml(pr[0].toUpperCase()+pr.slice(1))}</span>
-            </div>
-            <div class="subline">
-              <span class="tag">📅 ${escapeHtml(dueLabel)}</span>
-              <span class="tag">🔁 ${escapeHtml(rep)}</span>
-              <span class="tag">🏷️ ${escapeHtml(c.category || "Uncategorized")}</span>
-              ${hasPhoto ? `<span class="tag">📷 Uploaded</span>` : `<span class="tag">📷 Needed</span>`}
-              ${hasPhoto ? `<span class="tag">🕒 ${escapeHtml(fmtTime(c.photo_at || c.done_at))}</span>` : ``}
-            </div>
+    return `
+      <div class="item" data-id="${escapeHtml(c.id)}">
+        <div class="meta">
+          <div class="title">
+            <span class="name">${escapeHtml(c.name)}</span>
+            ${c.done ? `<span class="tag"><span class="dot ok"></span> Done</span>` : `<span class="tag"><span class="dot"></span> Open</span>`}
+            <span class="tag">${escapeHtml(pr)}</span>
           </div>
-
-          <div class="controls">
-            <input class="file" type="file" accept="image/*" capture="environment" data-file />
-            <button class="btn small" data-action="attach">📎 Attach photo</button>
-            ${!c.done ? `<button class="btn small ok" data-action="done" disabled>✅ Done</button>` : ``}
-            ${hasPhoto ? `<img class="thumb" data-photo="1" src="${photoUrl}" alt="photo" style="display:block" />` : ``}
+          <div class="subline">
+            <span class="tag">📅 ${escapeHtml(dueLabel)}</span>
+            <span class="tag">🔁 ${escapeHtml(rep)}</span>
+            <span class="tag">🏷️ ${escapeHtml(c.category || "Uncategorized")}</span>
+            ${hasPhoto ? `<span class="tag">📷 Uploaded</span>` : `<span class="tag">📷 Needed</span>`}
+            ${hasPhoto ? `<span class="tag">🕒 ${escapeHtml(fmtTimeIso(c.photoAt || c.doneAt))}</span>` : ``}
           </div>
         </div>
-      `;
-    }).join("");
-  }
 
-  function escapeHtml(s){
-    return (s ?? "").toString()
-      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-  }
-  function fmtTime(ts){
-    if(!ts) return "";
-    const d = new Date(ts);
-    return d.toLocaleString();
-  }
+        <div class="controls">
+          <input class="file" type="file" accept="image/*" capture="environment" data-file />
+          <button class="btn small" data-action="attach">📎 Attach photo</button>
+          ${!c.done ? `<button class="btn small ok" data-action="done" disabled>✅ Done</button>` : ``}
+          ${hasPhoto ? `<img class="thumb" data-photo="1" src="${escapeHtml(c.photoUrl)}" alt="photo" style="display:block" />` : ``}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 
-  // Lightbox
-  function openPhoto(src){
-    el.lbImg.src = src;
-    el.lightbox.classList.add("open");
-    el.lightbox.setAttribute("aria-hidden","false");
-  }
-  function closePhoto(){
-    el.lightbox.classList.remove("open");
-    el.lightbox.setAttribute("aria-hidden","true");
-    el.lbImg.src = "";
-  }
-  el.lbClose.addEventListener("click", closePhoto);
-  el.lightbox.addEventListener("click", (e)=>{ if(e.target === el.lightbox) closePhoto(); });
+// Lightbox
+function openPhoto(src){
+  el.lbImg.src = src;
+  el.lightbox.classList.add("open");
+  el.lightbox.setAttribute("aria-hidden","false");
+}
+function closePhoto(){
+  el.lightbox.classList.remove("open");
+  el.lightbox.setAttribute("aria-hidden","true");
+  el.lbImg.src = "";
+}
+el.lbClose.addEventListener("click", closePhoto);
+el.lightbox.addEventListener("click", (e)=>{ if(e.target === el.lightbox) closePhoto(); });
 
-  // Wire up per-item attach/done
-  const pendingFiles = new Map(); // choreId -> File
+document.addEventListener("click", async (e) => {
+  const img = e.target.closest("img[data-photo]");
+  if(img?.src){ openPhoto(img.src); return; }
 
-  document.addEventListener("click", async (e) => {
-    const img = e.target.closest("img[data-photo]");
-    if(img?.src){ openPhoto(img.src); return; }
+  const btn = e.target.closest("button[data-action]");
+  if(!btn) return;
+  const item = e.target.closest(".item");
+  if(!item) return;
+  const id = item.getAttribute("data-id");
+  const action = btn.getAttribute("data-action");
 
-    const btn = e.target.closest("button[data-action]");
-    if(!btn) return;
-    const item = e.target.closest(".item");
-    if(!item) return;
-    const id = item.getAttribute("data-id");
-    const action = btn.getAttribute("data-action");
-
-    const chore = chores.find(x => x.id === id);
-    if(!chore) return;
-
-    // attach
-    if(action === "attach"){
-      const fileInput = item.querySelector("input[data-file]");
-      if(!fileInput) return;
-      fileInput.click();
-
-      // enable Done when file chosen
-      fileInput.onchange = () => {
-        const f = fileInput.files && fileInput.files[0];
-        const doneBtn = item.querySelector('button[data-action="done"]');
-        if(f){
-          pendingFiles.set(id, f);
-          if(doneBtn) doneBtn.disabled = false; // ✅ require photo before done
-          showMsg("Photo selected. Now tap Done.", "ok");
-        } else {
-          pendingFiles.delete(id);
-          if(doneBtn) doneBtn.disabled = true;
-        }
-      };
-      return;
-    }
-
-    // done
-    if(action === "done"){
-      const file = pendingFiles.get(id);
-      if(!file){
-        showMsg("Attach a photo first.", "bad");
-        return;
-      }
-      btn.disabled = true;
-      btn.textContent = "Uploading…";
-
-      try{
-        await completeChoreWithPhoto(chore, file);
+  if(action === "attach"){
+    const fileInput = item.querySelector("input[data-file]");
+    if(!fileInput) return;
+    fileInput.click();
+    fileInput.onchange = () => {
+      const f = fileInput.files && fileInput.files[0];
+      const doneBtn = item.querySelector('button[data-action="done"]');
+      if(f){
+        pendingFiles.set(id, f);
+        if(doneBtn) doneBtn.disabled = false;
+        showMsg("Photo selected. Now tap Done.", "ok");
+      } else {
         pendingFiles.delete(id);
-        showMsg("Completed and synced to Admin ✅", "ok");
-        await refresh();
-      } catch(err){
-        console.error(err);
-        showMsg("Upload failed. Check your Supabase Storage bucket + permissions.", "bad");
-        btn.disabled = false;
-        btn.textContent = "✅ Done";
+        if(doneBtn) doneBtn.disabled = true;
       }
+    };
+    return;
+  }
+
+  if(action === "done"){
+    const file = pendingFiles.get(id);
+    if(!file){ showMsg("Attach a photo first.", "bad"); return; }
+    btn.disabled = true;
+    btn.textContent = "Uploading…";
+    try{
+      await completeChoreWithPhoto(id, file);
+      pendingFiles.delete(id);
+      showMsg("Completed and synced to Admin ✅", "ok");
+      await refresh();
+    }catch(err){
+      console.error(err);
+      showMsg("Upload failed. Check WEBAPP_URL + Apps Script permissions.", "bad");
+      btn.disabled = false;
+      btn.textContent = "✅ Done";
     }
-  });
-
-  // Filters
-  ["search","filterRepeat","filterStatus","sortBy"].forEach(id => {
-    $(id).addEventListener("input", render);
-    $(id).addEventListener("change", render);
-  });
-
-  async function refresh(){
-    clearMsg();
-    chores = await loadFromDB();
-    render();
   }
+});
 
-  function render(){
-    renderStats();
-    renderList();
-  }
+["search","filterRepeat","filterStatus","sortBy"].forEach(id => {
+  $(id).addEventListener("input", render);
+  $(id).addEventListener("change", render);
+});
 
-  // Realtime updates (so if admin adds chores, Maisie sees them)
-  supabase
-    .channel("chores-maisie-live")
-    .on("postgres_changes", { event:"*", schema:"public", table:"chores", filter:`assignee=eq.${ASSIGNEE}` }, async () => {
-      chores = await loadFromDB();
-      render();
-    })
-    .subscribe();
+async function refresh(){
+  clearMsg();
+  await loadChores();
+  render();
+}
+function render(){
+  renderStats();
+  renderList();
+}
 
-  // Buttons
-  el.refreshBtn.addEventListener("click", refresh);
-  el.signOutBtn.addEventListener("click", async () => {
-    // Only needed if you later add user logins.
-    await supabase.auth.signOut();
-    showMsg("Signed out.", "ok");
-  });
+// Auto-refresh every 15 seconds for Maisie (optional)
+setInterval(()=>refresh().catch(()=>{}), 15000);
 
-  // PWA SW register (optional)
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(()=>{});
-  }
+el.refreshBtn.addEventListener("click", refresh);
+el.signOutBtn.addEventListener("click", () => {
+  // No sign-in on user page; just clears admin token if present.
+  sessionStorage.removeItem(TOKEN_KEY);
+  showMsg("Cleared admin session.", "ok");
+});
 
-  // Init
-  await refresh();
+// PWA
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
+
+refresh().catch(err => { console.error(err); showMsg(String(err?.message||err), "bad"); });
 </script>
 </body>
 </html>
