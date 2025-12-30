@@ -80,7 +80,7 @@
     <div class="top">
       <div>
         <h1>Maisie • Chores</h1>
-        <div class="sub">Attach a photo, then press Done. Photos upload to Google Drive and sync to Admin.</div>
+        <div class="sub">Attach a photo, then press Done. Photo is compressed then uploaded to Google Drive.</div>
       </div>
       <div class="actions">
         <span class="pill"><span class="dot warn"></span><span id="countPill">Loading…</span></span>
@@ -96,6 +96,17 @@
   </div>
 </div>
 
+<!-- Hidden form POST target (more reliable than fetch no-cors) -->
+<iframe name="postTarget" style="display:none"></iframe>
+<form id="postForm" target="postTarget" method="POST" action="https://script.google.com/macros/s/AKfycbx_H3KG5QXjuvU9SDWWLIq0H70h6bxIF_6guW5Rd7lOUOa9DFOeaHtJhOSDbw9lXa6T/exec" style="display:none">
+  <input name="action" value="">
+  <input name="choreId" value="">
+  <input name="assignee" value="">
+  <input name="base64" value="">
+  <input name="mimeType" value="">
+  <input name="filename" value="">
+</form>
+
 <div class="toast" id="toast"><div class="toastInner" id="toastInner">Saved</div></div>
 
 <script>
@@ -103,7 +114,7 @@
   const ASSIGNEE = "Maisie";
   document.getElementById('backendUrl').textContent = WEBAPP_URL;
 
-  // simple user lock: must come from login page
+  // user lock
   const who = sessionStorage.getItem('user_name');
   if(!who || who !== ASSIGNEE){
     location.href = "index.html";
@@ -122,7 +133,6 @@
       const cb = "cb_" + Math.random().toString(36).slice(2);
       params.callback = cb;
       const qs = new URLSearchParams(params).toString();
-
       const s = document.createElement('script');
       s.src = WEBAPP_URL + "?" + qs;
 
@@ -153,40 +163,51 @@
     });
   }
 
-  // POST write (no-cors). We can't read response, so we refresh after.
-  async function postNoCors(action, payload) {
-    const p = new URLSearchParams({ action });
-    Object.entries(payload || {}).forEach(([k,v]) => {
-      if(v !== undefined && v !== null) p.set(k, String(v));
-    });
-    await fetch(WEBAPP_URL, {
-      method: "POST",
-      mode: "no-cors",
-      body: p
-    });
-  }
-
   function niceDate(iso){
     if(!iso) return "";
     const d = new Date(iso);
     return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
   }
-
   function doneFlag(c){
     return (String(c.done).toLowerCase()==="true" || c.done===true);
   }
-
   function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+    return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[m]);
   }
 
-  function fileToDataUrl(file){
-    return new Promise((resolve,reject)=>{
-      const reader = new FileReader();
-      reader.onload = ()=>resolve(String(reader.result||""));
-      reader.onerror = ()=>reject(new Error("File read failed"));
-      reader.readAsDataURL(file);
+  // Compress image to JPEG to avoid Apps Script size limits
+  async function compressToJpegDataUrl(file, maxW=1280, maxH=1280, quality=0.78) {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Image load failed"));
+      i.src = URL.createObjectURL(file);
     });
+
+    const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+    const w = Math.round(img.width * ratio);
+    const h = Math.round(img.height * ratio);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const dataUrl = canvas.toDataURL("image/jpeg", quality);
+    return dataUrl;
+  }
+
+  // Form POST to Apps Script (more reliable than fetch no-cors)
+  function postCompleteChore({ choreId, assignee, base64, mimeType, filename }) {
+    const form = document.getElementById("postForm");
+    form.action.value = "completeChore";
+    form.choreId.value = String(choreId);
+    form.assignee.value = String(assignee);
+    form.base64.value = String(base64);
+    form.mimeType.value = String(mimeType || "image/jpeg");
+    form.filename.value = String(filename || ("proof_"+Date.now()+".jpg"));
+    form.submit();
   }
 
   let chores = [];
@@ -204,7 +225,6 @@
     const open = chores.filter(c => !doneFlag(c)).length;
     document.getElementById('countPill').textContent = `${open} open • ${chores.length-open} done`;
 
-    // show open first
     chores
       .slice()
       .sort((a,b)=>Number(doneFlag(a))-Number(doneFlag(b)))
@@ -213,14 +233,14 @@
         el.className = "item";
         const due = c.due ? niceDate(c.due) : "";
         const rep = c.repeat ? (c.repeat==="everyX" ? `Every ${c.repeatEveryDays||""} days` : c.repeat) : "none";
-
         const isDone = doneFlag(c);
+
         el.innerHTML = `
           <div class="row">
             <div>
               <div class="name">${escapeHtml(c.name||"")}</div>
               <div class="meta">Due: ${escapeHtml(due)} • Priority: ${escapeHtml(c.priority||"medium")} • Repeat: ${escapeHtml(rep)}</div>
-              ${isDone ? `<div class="meta">✅ Done at: ${escapeHtml(c.doneAt||"")} ${c.photoUrl?` • <a href="${c.photoUrl}" target="_blank" rel="noopener">View proof</a>`:""}</div>` : ""}
+              ${isDone ? `<div class="meta">✅ Done • ${c.photoUrl?`<a href="${c.photoUrl}" target="_blank" rel="noopener">View proof</a>`:""}</div>` : ""}
             </div>
             <div>
               <span class="pill"><span class="dot ${isDone?'ok':'warn'}"></span>${isDone?'Done':'Open'}</span>
@@ -241,7 +261,6 @@
         const prev = el.querySelector(`#prev_${CSS.escape(String(c.id))}`);
         const doneBtn = el.querySelector(`#done_${CSS.escape(String(c.id))}`);
 
-        // Require photo before Done
         doneBtn.disabled = true;
 
         if(!isDone){
@@ -260,20 +279,23 @@
           doneBtn.addEventListener('click', async ()=>{
             const f = fileInput.files && fileInput.files[0];
             if(!f) return toast("Attach a photo first");
+
             doneBtn.disabled = true;
-            toast("Uploading photo…");
+            toast("Compressing + uploading…");
 
             try {
-              const dataUrl = await fileToDataUrl(f); // includes data:image/...;base64,
-              await postNoCors("completeChore", {
+              const dataUrl = await compressToJpegDataUrl(f, 1280, 1280, 0.78);
+              // POST
+              postCompleteChore({
                 choreId: c.id,
                 assignee: ASSIGNEE,
                 base64: dataUrl,
-                mimeType: f.type || "image/jpeg",
-                filename: f.name || ("proof_"+Date.now()+".jpg")
+                mimeType: "image/jpeg",
+                filename: "proof_"+Date.now()+".jpg"
               });
+              // Give Apps Script time, then reload list
+              setTimeout(()=>load().catch(e=>toast("Reload error: "+e.message)), 2500);
               toast("Done ✅ Syncing…");
-              setTimeout(()=>load().catch(e=>toast("Reload error: "+e.message)), 1500);
             } catch(e) {
               toast("Upload failed: " + e.message);
               doneBtn.disabled = false;
@@ -289,7 +311,6 @@
     location.href="index.html";
   });
 
-  // Initial + gentle auto refresh (60s)
   load().catch(e=>toast("Load error: "+e.message));
   setInterval(()=>load().catch(()=>{}), 60000);
 </script>
