@@ -1,242 +1,44 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Chores Login</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b1020">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-
-  <!-- Google Sign-In -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-  <style>
-    :root{
-      --bg:#0b1020; --text:#e8ecff; --muted:#a9b4e6; --line:rgba(255,255,255,.12);
-      --shadow:0 18px 50px rgba(0,0,0,.45); --radius:18px;
-      --hi:#60a5fa; --ok:#36d399; --bad:#fb7185;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; min-height:100vh;
-      font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      color:var(--text);
-      background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.25), transparent 55%),
-        radial-gradient(900px 500px at 90% 0%, rgba(251,113,133,.18), transparent 60%),
-        radial-gradient(1000px 700px at 60% 120%, rgba(54,211,153,.14), transparent 60%),
-        var(--bg);
-      display:flex; align-items:center; justify-content:center;
-      padding:22px;
-    }
-    .card{
-      width:min(980px, 100%);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-    .top{
-      padding:18px 18px 14px;
-      border-bottom:1px solid var(--line);
-      background:rgba(0,0,0,.12);
-      display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; align-items:flex-start;
-    }
-    h1{margin:0;font-size:20px;letter-spacing:.3px}
-    .sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.35}
-    .grid{display:grid; grid-template-columns:1fr 1fr; gap:0;}
-    @media (max-width:860px){ .grid{grid-template-columns:1fr} }
-    .pane{padding:18px;border-right:1px solid var(--line);}
-    @media (max-width:860px){ .pane{border-right:none;border-bottom:1px solid var(--line)} }
-    .pane:last-child{border-right:none;border-bottom:none}
-    .pane h2{margin:0 0 10px;font-size:14px;letter-spacing:.2px}
-    .pane p{margin:0 0 14px;color:var(--muted);font-size:12.5px;line-height:1.4}
-    .btn{
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.05);
-      padding:11px 12px;
-      border-radius:12px;
-      cursor:pointer;
-      transition:.15s ease;
-      display:inline-flex; align-items:center; justify-content:center; gap:8px;
-      box-shadow:0 10px 22px rgba(0,0,0,.25);
-      width:100%;
-      color:var(--text);
-      font:inherit;
-    }
-    .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.08)}
-    .btn.ok{border-color:rgba(54,211,153,.45);background:rgba(54,211,153,.12)}
-    .btn.danger{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12)}
-    .msg{
-      margin-top:12px;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.18);
-      color:var(--muted);
-      font-size:12.5px;
-      display:none;
-    }
-    .msg.bad{border-color:rgba(251,113,133,.35);color:#ffd7df}
-    .msg.ok{border-color:rgba(54,211,153,.30);color:#d8fff0}
-    .footer{
-      padding:14px 18px;
-      border-top:1px solid var(--line);
-      background:rgba(0,0,0,.12);
-      display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;
-      color:rgba(169,180,230,.75); font-size:12px;
-    }
-    code{
-      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size:11px;
-      color:#d6dcff;
-      background:rgba(0,0,0,.25);
-      border:1px solid rgba(255,255,255,.10);
-      padding:2px 6px;
-      border-radius:10px;
-    }
-    .gbtnWrap{display:flex;justify-content:flex-start}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Chores Login</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+body{font-family:system-ui;margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1020;color:#e8ecff}
+.card{max-width:760px;width:92vw;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px;background:rgba(255,255,255,.05)}
+button{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#e8ecff;cursor:pointer}
+.small{color:#a9b4e6;font-size:13px}
+</style>
 </head>
-
 <body>
-  <div class="card">
-    <div class="top">
-      <div>
-        <h1>Chores Dashboard</h1>
-        <div class="sub">
-          Admin uses Google Sign‑In (no passwords). End user opens Maisie’s dashboard.
-        </div>
-      </div>
-    </div>
+<div class="card">
+  <h2 style="margin:0 0 6px">Chores Dashboard</h2>
+  <div class="small" style="margin:0 0 14px">Admin uses Google Sign-In. User opens Maisie dashboard.</div>
 
-    <div class="grid">
-      <div class="pane">
-        <h2>Admin</h2>
-        <p>Sign in with Google. You will be redirected to the admin dashboard.</p>
+  <h3 style="margin:0 0 8px">Admin</h3>
+  <div id="googleBtn"></div>
+  <div class="small" style="margin:10px 0 16px">Allowed: <b>kimwilson521@gmail.com</b></div>
 
-        <div class="gbtnWrap">
-          <div id="googleAdminBtn"></div>
-        </div>
-
-        <button class="btn danger" id="adminLogoutBtn" type="button" style="margin-top:10px;">Logout</button>
-        <div class="msg" id="adminMsg"></div>
-
-        <div class="sub" style="margin-top:10px">
-          Admin page: <code>admin maise progress calander.html</code>
-        </div>
-      </div>
-
-      <div class="pane">
-        <h2>End User</h2>
-        <p>Open Maisie’s dashboard.</p>
-
-        <button class="btn ok" id="userLoginBtn" type="button">Open Maisie dashboard →</button>
-        <div class="msg" id="userMsg"></div>
-
-        <div class="sub" style="margin-top:10px">
-          User page: <code>maise c.html</code>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div>
-        PWA: use browser menu → “Install app”.
-      </div>
-      <div>
-        Offline works for pages; syncing needs internet.
-      </div>
-    </div>
-  </div>
+  <h3 style="margin:0 0 8px">User</h3>
+  <button id="userBtn">Open Maisie</button>
+</div>
 
 <script>
-/************ CONFIG (FILL THESE) ************/
-const GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
-const ADMIN_EMAIL_ALLOW = "kimwilson521@gmail.com";
-/*********************************************/
+const GOOGLE_CLIENT_ID="268475007338-dj50bjnkclghg3eaiv3bivh4qu8325mn.apps.googleusercontent.com";
+const ADMIN_PAGE="admin maise progress calander.html";
+const USER_PAGE="maise c.html";
 
-// Files
-const ADMIN_PAGE = "admin maise progress calander.html";
-const USER_PAGE  = "maise c.html";
-
-// Store token so admin page can verify
-const TOKEN_KEY = "admin_id_token_v1";
-
-const adminMsg = document.getElementById("adminMsg");
-const userMsg = document.getElementById("userMsg");
-
-function showMsg(box, text, kind){
-  box.className = "msg" + (kind ? " " + kind : "");
-  box.textContent = text;
-  box.style.display = "block";
-}
-function clearMsg(box){ box.style.display="none"; box.textContent=""; box.className="msg"; }
-
-async function verifyTokenClientSide(idToken){
-  // Verifies signature + returns decoded claims via Google tokeninfo endpoint
-  const url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(idToken);
-  const res = await fetch(url);
-  if(!res.ok) throw new Error("Token verify failed");
-  const data = await res.json();
-  if(data.aud !== GOOGLE_CLIENT_ID) throw new Error("Wrong Google Client ID");
-  const email = (data.email || "").toLowerCase();
-  if(email !== ADMIN_EMAIL_ALLOW.toLowerCase()) throw new Error("Not authorised admin");
-  return data;
-}
-
-window.addEventListener("load", () => {
-  // Auto-redirect if token already present + valid
-  const existing = sessionStorage.getItem(TOKEN_KEY);
-  if(existing){
-    verifyTokenClientSide(existing).then(()=>location.href=ADMIN_PAGE).catch(()=>sessionStorage.removeItem(TOKEN_KEY));
-  }
-
-  // Render Google button
-  if(window.google?.accounts?.id){
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: async (resp) => {
-        try{
-          const idToken = resp.credential;
-          await verifyTokenClientSide(idToken);
-          sessionStorage.setItem(TOKEN_KEY, idToken);
-          location.href = ADMIN_PAGE;
-        }catch(err){
-          console.error(err);
-          sessionStorage.removeItem(TOKEN_KEY);
-          showMsg(adminMsg, String(err?.message || err), "bad");
-        }
-      }
-    });
-
-    google.accounts.id.renderButton(
-      document.getElementById("googleAdminBtn"),
-      { theme: "outline", size: "large", text: "signin_with" }
-    );
-  } else {
-    showMsg(adminMsg, "Google Sign‑In failed to load.", "bad");
-  }
-});
-
-document.getElementById("adminLogoutBtn").addEventListener("click", () => {
-  sessionStorage.removeItem(TOKEN_KEY);
-  showMsg(adminMsg, "Logged out.", "ok");
-});
-
-document.getElementById("userLoginBtn").addEventListener("click", () => {
-  location.href = USER_PAGE;
-});
-
-// PWA service worker
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(()=>{});
-}
+window.onload=()=>{
+  if(!window.google || !google.accounts || !google.accounts.id) return;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback:(resp)=>{ sessionStorage.setItem("admin_token", resp.credential); location.href=ADMIN_PAGE; }
+  });
+  google.accounts.id.renderButton(document.getElementById("googleBtn"),{theme:"outline",size:"large"});
+};
+document.getElementById("userBtn").onclick=()=>location.href=USER_PAGE;
 </script>
 </body>
 </html>
