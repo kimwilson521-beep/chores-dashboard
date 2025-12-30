@@ -1,513 +1,156 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Maisie Chores</title>
-
-  <!-- PWA (optional but recommended if you added manifest/sw) -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b1020">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-
-  <style>
-    :root{
-      --bg:#0b1020; --text:#e8ecff; --muted:#a9b4e6; --line:rgba(255,255,255,.10);
-      --shadow:0 12px 30px rgba(0,0,0,.35); --radius:18px;
-      --ok:#36d399; --warn:#fbbf24; --bad:#fb7185; --hi:#60a5fa;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      color:var(--text);
-      background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.25), transparent 55%),
-        radial-gradient(900px 500px at 90% 0%, rgba(251,113,133,.18), transparent 60%),
-        radial-gradient(1000px 700px at 60% 120%, rgba(54,211,153,.14), transparent 60%),
-        var(--bg);
-      min-height:100vh;
-    }
-    .wrap{max-width:1100px;margin:0 auto;padding:26px 16px 40px}
-    header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    h1{margin:0;font-size:24px;letter-spacing:.3px}
-    .sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.4}
-    .btn{
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.04);
-      padding:10px 12px;border-radius:12px;cursor:pointer;
-      transition:.15s ease; color:var(--text);
-      display:inline-flex;align-items:center;gap:8px;
-    }
-    .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.07)}
-    .btn:active{transform:translateY(0)}
-    .btn.primary{border-color:rgba(96,165,250,.45);background:rgba(96,165,250,.14)}
-    .btn.ok{border-color:rgba(54,211,153,.45);background:rgba(54,211,153,.12)}
-    .btn.danger{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12)}
-    .btn.small{padding:8px 10px;border-radius:11px;font-size:12px}
-
-    .card{
-      margin-top:14px;
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-
-    .stats{
-      display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
-      padding:14px;border-bottom:1px solid var(--line);
-      background:rgba(0,0,0,.08);
-    }
-    @media(max-width:850px){.stats{grid-template-columns:1fr}}
-    .stat{
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.04);
-      border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;
-    }
-    .k{color:var(--muted);font-size:12px}
-    .v{font-size:18px;font-weight:750}
-    .barOuter{
-      width:100%;height:10px;border-radius:999px;border:1px solid var(--line);
-      background:rgba(0,0,0,.18);overflow:hidden;
-    }
-    .barInner{
-      height:100%;width:0%;
-      background:rgba(54,211,153,.75);
-      border-radius:999px;
-      transition:width .25s ease;
-    }
-
-    .toolbar{
-      display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;
-      padding:14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.10);
-    }
-    input,select{font:inherit;color:var(--text)}
-    input[type="text"], select{
-      padding:10px;border-radius:12px;border:1px solid var(--line);
-      background:rgba(0,0,0,.18);outline:none;
-    }
-    .list{display:flex;flex-direction:column}
-    .item{
-      padding:12px 14px;border-bottom:1px solid var(--line);
-      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
-      background:rgba(255,255,255,.02);
-    }
-    .item:last-child{border-bottom:none}
-    .meta{display:flex;flex-direction:column;gap:6px;min-width:0}
-    .title{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .name{font-weight:800;letter-spacing:.2px}
-    .subline{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px}
-    .tag{
-      border:1px solid var(--line);border-radius:999px;padding:4px 8px;background:rgba(255,255,255,.03);
-      display:inline-flex;gap:6px;align-items:center;
-    }
-    .dot{width:8px;height:8px;border-radius:99px;background:var(--hi);display:inline-block}
-    .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
-    .thumb{
-      width:42px;height:42px;border-radius:12px;object-fit:cover;border:1px solid var(--line);
-      cursor:pointer;display:none;
-    }
-    .hint{color:rgba(169,180,230,.8);font-size:12px;padding:12px 14px;border-top:1px solid var(--line);background:rgba(0,0,0,.08)}
-    .empty{padding:22px;text-align:center;color:var(--muted)}
-    .msg{display:none;margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:var(--muted);font-size:12.5px}
-    .msg.bad{border-color:rgba(251,113,133,.35);color:#ffd7df}
-    .msg.ok{border-color:rgba(54,211,153,.30);color:#d8fff0}
-
-    /* Lightbox */
-    .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:11000}
-    .lightbox.open{display:flex}
-    .lightbox img{max-width:min(1000px,96vw);max-height:86vh;border-radius:16px;border:1px solid rgba(255,255,255,.15);box-shadow:0 20px 60px rgba(0,0,0,.5)}
-    .lightbox .close{
-      position:absolute;top:14px;right:14px;border:1px solid rgba(255,255,255,.18);
-      background:rgba(0,0,0,.35);color:var(--text);border-radius:12px;padding:10px 12px;cursor:pointer;
-    }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Maisie • Chores</title>
+<style>
+body{font-family:system-ui;margin:0;background:#0b1020;color:#e8ecff}
+header{padding:16px}
+.small{color:#a9b4e6;font-size:13px}
+.card{margin:16px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.05);overflow:hidden}
+.bar{display:flex;gap:10px;flex-wrap:wrap;padding:12px;border-bottom:1px solid rgba(255,255,255,.12)}
+input,select,button{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e8ecff}
+.item{padding:10px 12px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;gap:10px}
+.meta{color:#a9b4e6;font-size:12px;margin-top:4px}
+a{color:#e8ecff}
+</style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>Maisie • Chores</h1>
-      <div class="sub">
-        Upload a photo first → then you can mark a chore as done.<br>
-        This page syncs completions + photos to the Admin dashboard via Supabase.
-      </div>
-      <div class="msg" id="msg"></div>
-    </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn" id="refreshBtn">↻ Refresh</button>
-      <button class="btn danger" id="signOutBtn" title="Only needed if you later add user logins">Sign out</button>
-    </div>
-  </header>
-
-  <div class="card">
-    <div class="stats" id="stats"></div>
-
-    <div class="toolbar">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <input type="text" id="search" placeholder="Search chores…" />
-        <select id="filterRepeat">
-          <option value="all" selected>All</option>
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-          <option value="everyX">Every X days</option>
-          <option value="none">No repeat</option>
-        </select>
-        <select id="filterStatus">
-          <option value="open" selected>Open</option>
-          <option value="done">Done</option>
-          <option value="all">All</option>
-        </select>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <select id="sortBy">
-          <option value="dueAsc" selected>Due soon</option>
-          <option value="priority">Priority</option>
-          <option value="newest">Newest</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="list" id="list"></div>
-
-    <div class="hint">
-      Tip: if “Done” is disabled, attach a photo first. Photos are uploaded to Supabase Storage bucket <b>proof</b>.
-    </div>
-  </div>
-</div>
-
-<!-- lightbox -->
-<div class="lightbox" id="lightbox" aria-hidden="true">
-  <button class="close" id="lbClose">✕ Close</button>
-  <img id="lbImg" alt="Proof photo" />
-</div>
-
 <script>
-/************ CONFIG (FILL THESE) ************/
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwaa0cARwT_CZKN-6o_QE7HYWXY2NZReMreQK7xu53aPOzMz-696cBaCLppzAc2nLmH/exec";
-const ASSIGNEE = "Maisie";
-/*********************************************/
+const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwaa0cARwT_CZKN-6o_QE7HYWXY2NZReMreQK7xu53aPOzMz-696cBaCLppzAc2nLmH/exec";
+const ASSIGNEE="Maisie";
 
-const TOKEN_KEY = "admin_id_token_v1"; // not needed for Maisie actions
-const $ = (id) => document.getElementById(id);
-const el = {
-  stats: $("stats"),
-  list: $("list"),
-  search: $("search"),
-  filterRepeat: $("filterRepeat"),
-  filterStatus: $("filterStatus"),
-  sortBy: $("sortBy"),
-  refreshBtn: $("refreshBtn"),
-  signOutBtn: $("signOutBtn"),
-  msg: $("msg"),
-  lightbox: $("lightbox"),
-  lbImg: $("lbImg"),
-  lbClose: $("lbClose"),
-};
-
-let chores = [];
-const pendingFiles = new Map(); // choreId -> File
-
-function showMsg(text, kind=""){
-  el.msg.className = "msg" + (kind ? " " + kind : "");
-  el.msg.textContent = text;
-  el.msg.style.display = "block";
-}
-function clearMsg(){ el.msg.style.display = "none"; el.msg.textContent = ""; el.msg.className="msg"; }
-
-function escapeHtml(s){
-  return (s ?? "").toString()
-    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-}
-function fmtTimeIso(iso){
-  if(!iso) return "";
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? "" : d.toLocaleString();
-}
-function priorityScore(p){ return p==="high"?3:p==="medium"?2:1; }
-
-function api(action, payload = {}){
-    const params = new URLSearchParams();
-    params.set("action", action);
-    for(const [k,v] of Object.entries(payload)){
-      if(v !== undefined && v !== null) params.set(k, String(v));
-    }
-    return fetch(WEBAPP_URL, { method:"POST", body: params }).then(r=>r.json());
-  })
-  }).then(r=>r.json());
-}
-function fileToBase64(file){
+function jsonp(action, params={}){
   return new Promise((resolve,reject)=>{
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
+    const cb="cb_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+    window[cb]=(data)=>{ try{resolve(data)} finally{ delete window[cb]; s.remove(); } };
+    const qs=new URLSearchParams();
+    qs.set("action", action);
+    Object.entries(params).forEach(([k,v])=>{ if(v!==undefined&&v!==null) qs.set(k,String(v)); });
+    qs.set("callback", cb);
+    const s=document.createElement("script");
+    s.src=WEBAPP_URL+"?"+qs.toString();
+    s.onerror=()=>{ delete window[cb]; s.remove(); reject(new Error("JSONP failed")); };
+    document.body.appendChild(s);
+  });
+}
+
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=rej;
     r.readAsDataURL(file);
   });
 }
+</script>
 
-function normalizeFromSheet(x){
-  // Sheet returns strings; normalize types
-  const doneStr = String(x.done ?? "").toLowerCase();
-  return {
-    ...x,
-    done: doneStr === "true" || x.done === true,
-    repeat: (x.repeat || "none") || "none",
-    repeatEveryDays: x.repeatEveryDays ? Number(x.repeatEveryDays) : null,
-    photoUrl: x.photoUrl || "",
-    doneAt: x.doneAt || "",
-    photoAt: x.photoAt || ""
-  };
-}
+<header>
+  <h2 style="margin:0">Maisie • Chores</h2>
+  <div class="small">Attach photo first, then Done uploads to Drive (fire-and-forget) and refreshes.</div>
+</header>
 
-async function loadChores(){
-  const out = await api("listChores", { assignee: ASSIGNEE });
-  if(!out.ok) throw new Error(out.error || "listChores failed");
-  chores = (out.items || []).map(normalizeFromSheet);
-}
+<div class="card">
+  <div class="bar">
+    <input id="q" placeholder="Search">
+    <select id="st">
+      <option value="open" selected>Open</option>
+      <option value="done">Done</option>
+      <option value="all">All</option>
+    </select>
+    <button id="ref">Refresh</button>
+  </div>
+  <div id="list"></div>
+</div>
 
-async function completeChoreWithPhoto(choreId, file){
-  const base64 = await fileToBase64(file);
-  const out = await api("completeChore", {
-    choreId,
-    assignee: ASSIGNEE,
-    base64,
-    mimeType: file.type || "image/jpeg",
-    filename: `proof_${Date.now()}.jpg`
-  });
-  if(!out.ok) throw new Error(out.error || "completeChore failed");
-  return out;
-}
-
-function repeatText(c){
-  const r = c.repeat || "none";
-  if(r==="none") return "No repeat";
-  if(r==="daily") return "Daily";
-  if(r==="weekly") return "Weekly";
-  if(r==="monthly") return "Monthly";
-  if(r==="everyX") return `Every ${Number(c.repeatEveryDays || 3)} days`;
-  return r;
-}
-
-function computeProgress(){
-  const today = new Date();
-  const todayYMD = today.toISOString().slice(0,10);
-
-  const overallTotal = chores.length;
-  const overallDone = chores.filter(c => c.done).length;
-  const overallPct = overallTotal ? Math.round((overallDone/overallTotal)*100) : 0;
-
-  const dailyOpenDueToday = chores.filter(c => !c.done && c.repeat==="daily" && (!c.due || c.due===todayYMD)).length;
-  const dailyDoneToday = chores.filter(c => c.done && c.repeat==="daily" && String(c.doneAt||"").slice(0,10)===todayYMD).length;
-  const dailyTotalToday = dailyOpenDueToday + dailyDoneToday;
-  const dailyPct = dailyTotalToday ? Math.round((dailyDoneToday/dailyTotalToday)*100) : 0;
-
-  // week start Monday
-  const day = (today.getDay()+6)%7;
-  const mon = new Date(today); mon.setHours(0,0,0,0); mon.setDate(mon.getDate()-day);
-  const monMs = mon.getTime();
-
-  const weeklyOpen = chores.filter(c => !c.done && c.repeat==="weekly").length;
-  const weeklyDoneThisWeek = chores.filter(c => c.done && c.repeat==="weekly" && new Date(c.doneAt||0).getTime()>=monMs).length;
-  const weeklyTotal = weeklyOpen + weeklyDoneThisWeek;
-  const weeklyPct = weeklyTotal ? Math.round((weeklyDoneThisWeek/weeklyTotal)*100) : 0;
-
-  return { overallPct, overallDone, overallTotal, dailyPct, dailyDoneToday, dailyTotalToday, weeklyPct, weeklyDoneThisWeek, weeklyTotal };
-}
-
-function sortItems(items){
-  const mode = el.sortBy.value;
-  const dueKey = c => (c.due ? (new Date(c.due+"T00:00:00").getTime() || Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY);
-  const copy=[...items];
-  if(mode==="dueAsc") copy.sort((a,b)=> dueKey(a)-dueKey(b));
-  else if(mode==="priority") copy.sort((a,b)=> priorityScore(b.priority)-priorityScore(a.priority) || dueKey(a)-dueKey(b));
-  else if(mode==="newest") copy.sort((a,b)=> (new Date(b.doneAt||0).getTime() - new Date(a.doneAt||0).getTime()));
-  return copy;
-}
+<script>
+const el={q:document.getElementById("q"),st:document.getElementById("st"),ref:document.getElementById("ref"),list:document.getElementById("list")};
+let chores=[]; const pending=new Map();
+const esc=s=>(s??"").toString().replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
 
 function filtered(){
-  const q = el.search.value.trim().toLowerCase();
-  const rep = el.filterRepeat.value;
-  const st = el.filterStatus.value;
-
-  return chores.filter(c => {
-    if(q){
-      const blob = `${c.name} ${c.category||""}`.toLowerCase();
-      if(!blob.includes(q)) return false;
-    }
-    if(rep !== "all" && (c.repeat || "none") !== rep) return false;
-    if(st !== "all"){
-      if(st === "open" && c.done) return false;
-      if(st === "done" && !c.done) return false;
-    }
+  const q=(el.q.value||"").toLowerCase().trim();
+  const st=el.st.value;
+  return chores.filter(c=>{
+    const blob=`${c.name||""} ${c.category||""}`.toLowerCase();
+    if(q && !blob.includes(q)) return false;
+    const done=String(c.done).toLowerCase()==="true";
+    if(st==="open" && done) return false;
+    if(st==="done" && !done) return false;
     return true;
   });
 }
 
-function renderStats(){
-  const s = computeProgress();
-  el.stats.innerHTML = `
-    <div class="stat">
-      <div class="k">Overall completion</div>
-      <div class="v">${s.overallPct}%</div>
-      <div class="barOuter"><div class="barInner" style="width:${s.overallPct}%"></div></div>
-      <div class="k">${s.overallDone} done • ${s.overallTotal} total</div>
-    </div>
-    <div class="stat">
-      <div class="k">Daily completion (today)</div>
-      <div class="v">${s.dailyPct}%</div>
-      <div class="barOuter"><div class="barInner" style="width:${s.dailyPct}%"></div></div>
-      <div class="k">${s.dailyDoneToday} done • ${s.dailyTotalToday} total</div>
-    </div>
-    <div class="stat">
-      <div class="k">Weekly completion (this week)</div>
-      <div class="v">${s.weeklyPct}%</div>
-      <div class="barOuter"><div class="barInner" style="width:${s.weeklyPct}%"></div></div>
-      <div class="k">${s.weeklyDoneThisWeek} done • ${s.weeklyTotal} total</div>
-    </div>
-  `;
-}
-
-function renderList(){
-  const items = sortItems(filtered());
-  if(!items.length){
-    el.list.innerHTML = `<div class="empty">No chores found.</div>`;
-    return;
-  }
-
-  el.list.innerHTML = items.map(c => {
-    const rep = repeatText(c);
-    const dueLabel = c.due ? new Date(c.due+"T00:00:00").toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "No due date";
-    const pr = (c.priority||"medium");
-    const hasPhoto = Boolean(c.photoUrl);
-
-    return `
-      <div class="item" data-id="${escapeHtml(c.id)}">
-        <div class="meta">
-          <div class="title">
-            <span class="name">${escapeHtml(c.name)}</span>
-            ${c.done ? `<span class="tag"><span class="dot ok"></span> Done</span>` : `<span class="tag"><span class="dot"></span> Open</span>`}
-            <span class="tag">${escapeHtml(pr)}</span>
-          </div>
-          <div class="subline">
-            <span class="tag">📅 ${escapeHtml(dueLabel)}</span>
-            <span class="tag">🔁 ${escapeHtml(rep)}</span>
-            <span class="tag">🏷️ ${escapeHtml(c.category || "Uncategorized")}</span>
-            ${hasPhoto ? `<span class="tag">📷 Uploaded</span>` : `<span class="tag">📷 Needed</span>`}
-            ${hasPhoto ? `<span class="tag">🕒 ${escapeHtml(fmtTimeIso(c.photoAt || c.doneAt))}</span>` : ``}
-          </div>
-        </div>
-
-        <div class="controls">
-          <input class="file" type="file" accept="image/*" capture="environment" data-file />
-          <button class="btn small" data-action="attach">📎 Attach photo</button>
-          ${!c.done ? `<button class="btn small ok" data-action="done" disabled>✅ Done</button>` : ``}
-          ${hasPhoto ? `<img class="thumb" data-photo="1" src="${escapeHtml(c.photoUrl)}" alt="photo" style="display:block" />` : ``}
-        </div>
+function render(){
+  const items=filtered();
+  el.list.innerHTML = items.length ? items.map(c=>{
+    const done=String(c.done).toLowerCase()==="true";
+    const photo=c.photoUrl?String(c.photoUrl):"";
+    return `<div class="item" data-id="${esc(c.id)}">
+      <div>
+        <div><b>${esc(c.name)}</b> ${done?"✅":"🟡"}</div>
+        <div class="meta">🔁 ${esc(c.repeat||"none")} • 📅 ${esc(c.due||"")}</div>
       </div>
-    `;
-  }).join("");
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end">
+        <input type="file" accept="image/*" capture="environment" data-file style="display:none">
+        ${!done?`<button data-act="attach">Attach</button>`:""}
+        ${!done?`<button data-act="done" disabled>Done</button>`:""}
+        ${photo?`<a href="${esc(photo)}" target="_blank" rel="noopener">📷</a>`:""}
+      </div>
+    </div>`;
+  }).join("") : '<div style="padding:12px;color:#a9b4e6">No chores</div>';
 }
-
-// Lightbox
-function openPhoto(src){
-  el.lbImg.src = src;
-  el.lightbox.classList.add("open");
-  el.lightbox.setAttribute("aria-hidden","false");
-}
-function closePhoto(){
-  el.lightbox.classList.remove("open");
-  el.lightbox.setAttribute("aria-hidden","true");
-  el.lbImg.src = "";
-}
-el.lbClose.addEventListener("click", closePhoto);
-el.lightbox.addEventListener("click", (e)=>{ if(e.target === el.lightbox) closePhoto(); });
-
-document.addEventListener("click", async (e) => {
-  const img = e.target.closest("img[data-photo]");
-  if(img?.src){ openPhoto(img.src); return; }
-
-  const btn = e.target.closest("button[data-action]");
-  if(!btn) return;
-  const item = e.target.closest(".item");
-  if(!item) return;
-  const id = item.getAttribute("data-id");
-  const action = btn.getAttribute("data-action");
-
-  if(action === "attach"){
-    const fileInput = item.querySelector("input[data-file]");
-    if(!fileInput) return;
-    fileInput.click();
-    fileInput.onchange = () => {
-      const f = fileInput.files && fileInput.files[0];
-      const doneBtn = item.querySelector('button[data-action="done"]');
-      if(f){
-        pendingFiles.set(id, f);
-        if(doneBtn) doneBtn.disabled = false;
-        showMsg("Photo selected. Now tap Done.", "ok");
-      } else {
-        pendingFiles.delete(id);
-        if(doneBtn) doneBtn.disabled = true;
-      }
-    };
-    return;
-  }
-
-  if(action === "done"){
-    const file = pendingFiles.get(id);
-    if(!file){ showMsg("Attach a photo first.", "bad"); return; }
-    btn.disabled = true;
-    btn.textContent = "Uploading…";
-    try{
-      await completeChoreWithPhoto(id, file);
-      pendingFiles.delete(id);
-      showMsg("Completed and synced to Admin ✅", "ok");
-      await refresh();
-    }catch(err){
-      console.error(err);
-      showMsg("Upload failed. Check WEBAPP_URL + Apps Script permissions.", "bad");
-      btn.disabled = false;
-      btn.textContent = "✅ Done";
-    }
-  }
-});
-
-["search","filterRepeat","filterStatus","sortBy"].forEach(id => {
-  $(id).addEventListener("input", render);
-  $(id).addEventListener("change", render);
-});
 
 async function refresh(){
-  clearMsg();
-  await loadChores();
+  const out = await jsonp("listChores", { assignee: ASSIGNEE });
+  chores = (out && out.ok) ? (out.items || []) : [];
   render();
 }
-function render(){
-  renderStats();
-  renderList();
-}
 
-// Auto-refresh every 15 seconds for Maisie (optional)
-setInterval(()=>refresh().catch(()=>{}), 15000);
+document.addEventListener("click", async (e)=>{
+  const b=e.target.closest("button[data-act]");
+  if(!b) return;
+  const item=e.target.closest(".item");
+  if(!item) return;
+  const id=item.getAttribute("data-id");
+  const act=b.getAttribute("data-act");
 
-el.refreshBtn.addEventListener("click", refresh);
-el.signOutBtn.addEventListener("click", () => {
-  // No sign-in on user page; just clears admin token if present.
-  sessionStorage.removeItem(TOKEN_KEY);
-  showMsg("Cleared admin session.", "ok");
+  if(act==="attach"){
+    const inp=item.querySelector("input[data-file]");
+    const doneBtn=item.querySelector('button[data-act="done"]');
+    inp.click();
+    inp.onchange=()=>{
+      const f=inp.files && inp.files[0];
+      if(f){ pending.set(id,f); doneBtn.disabled=false; }
+      else { pending.delete(id); doneBtn.disabled=true; }
+    };
+  }
+
+  if(act==="done"){
+    const f=pending.get(id);
+    if(!f) return;
+    b.disabled=true; b.textContent="Uploading…";
+    const base64=await fileToBase64(f);
+    const p=new URLSearchParams();
+    p.set("action","completeChore");
+    p.set("choreId", id);
+    p.set("assignee", ASSIGNEE);
+    p.set("base64", base64);
+    p.set("mimeType", f.type || "image/jpeg");
+    p.set("filename", "proof_"+Date.now()+".jpg");
+
+    // Fire-and-forget to bypass CORS read (still reaches Apps Script)
+    await fetch(WEBAPP_URL, { method:"POST", mode:"no-cors", body:p });
+    pending.delete(id);
+    setTimeout(refresh, 1800);
+  }
 });
 
-// PWA
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(()=>{});
-}
+["input","change"].forEach(ev=>{ el.q.addEventListener(ev,render); el.st.addEventListener(ev,render); });
+el.ref.onclick = refresh;
 
-refresh().catch(err => { console.error(err); showMsg(String(err?.message||err), "bad"); });
+refresh();
 </script>
 </body>
 </html>
