@@ -4,164 +4,592 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Admin • Chores</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1020">
 <style>
-body{font-family:system-ui;margin:0;background:#0b1020;color:#e8ecff}
-header{padding:16px}
-.small{color:#a9b4e6;font-size:13px}
-.card{margin:16px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.05);overflow:hidden}
-.bar{display:flex;gap:10px;flex-wrap:wrap;padding:12px;border-bottom:1px solid rgba(255,255,255,.12)}
-input,select,button{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e8ecff}
-.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:12px;padding:12px}
-@media(max-width:980px){.grid{grid-template-columns:1fr}}
-.item{padding:10px 12px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;gap:10px}
-.meta{color:#a9b4e6;font-size:12px;margin-top:4px}
-a{color:#e8ecff}
+  :root{
+    --bg:#0b1020; --text:#e8ecff; --muted:#a9b4e6; --line:rgba(255,255,255,.12);
+    --shadow:0 18px 50px rgba(0,0,0,.45); --radius:18px;
+    --hi:#60a5fa; --ok:#36d399; --bad:#fb7185; --warn:#fbbf24;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh;
+    font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    color:var(--text);
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.25), transparent 55%),
+      radial-gradient(900px 500px at 90% 0%, rgba(251,113,133,.18), transparent 60%),
+      radial-gradient(1000px 700px at 60% 120%, rgba(54,211,153,.14), transparent 60%),
+      var(--bg);
+    padding:18px;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+  .card{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .top{
+    padding:16px 18px;
+    border-bottom:1px solid var(--line);
+    background:rgba(0,0,0,.12);
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  h1{margin:0;font-size:18px;letter-spacing:.3px}
+  .sub{color:var(--muted);font-size:12.5px;margin-top:6px;line-height:1.35}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    padding:9px 11px;
+    border-radius:12px;
+    cursor:pointer;
+    font:inherit;
+  }
+  .btn:hover{background:rgba(255,255,255,.09)}
+  .btn.primary{border-color:rgba(96,165,250,.50);background:rgba(96,165,250,.16)}
+  .btn.ok{border-color:rgba(54,211,153,.45);background:rgba(54,211,153,.12)}
+  .btn.bad{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12)}
+  select, input{
+    border:1px solid var(--line);
+    background:rgba(0,0,0,.18);
+    color:var(--text);
+    padding:9px 10px;
+    border-radius:12px;
+    font:inherit;
+  }
+  .tabs{
+    display:flex; gap:8px; flex-wrap:wrap;
+    padding:10px 18px;
+    border-bottom:1px solid var(--line);
+    background:rgba(0,0,0,.10);
+  }
+  .tab{
+    border:1px solid var(--line);
+    background:rgba(0,0,0,.14);
+    padding:9px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:13px;
+    color:var(--text);
+  }
+  .tab.active{border-color:rgba(96,165,250,.50);background:rgba(96,165,250,.14)}
+  .pane{display:none;padding:16px 18px}
+  .pane.active{display:block}
+  .grid{display:grid;grid-template-columns:1.3fr .7fr;gap:14px}
+  @media (max-width:980px){.grid{grid-template-columns:1fr}}
+  .panel{
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:rgba(0,0,0,.14);
+    padding:14px;
+  }
+  .panel h2{margin:0 0 10px;font-size:14px;letter-spacing:.2px}
+  .muted{color:var(--muted);font-size:12.5px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.10);font-size:13px}
+  th{color:rgba(169,180,230,.85);font-weight:600;font-size:12px}
+  .pill{display:inline-flex;gap:6px;align-items:center;border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.18);padding:4px 8px;border-radius:999px;font-size:12px;color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .dot.ok{background:var(--ok)}
+  .dot.bad{background:var(--bad)}
+  .dot.warn{background:var(--warn)}
+  .calendarHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .calTitle{font-size:14px;font-weight:700}
+  .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+  .dow{color:rgba(169,180,230,.85);font-size:11px;padding:2px 4px}
+  .day{
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.16);
+    border-radius:14px;
+    padding:10px 10px 9px;
+    min-height:74px;
+    cursor:pointer;
+  }
+  .day:hover{background:rgba(0,0,0,.22)}
+  .day.off{opacity:.45}
+  .dayNum{font-size:12.5px;color:rgba(232,236,255,.92);display:flex;justify-content:space-between;align-items:center}
+  .countRow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .badge{font-size:11px;padding:3px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.12);color:var(--muted)}
+  .badge.ok{border-color:rgba(54,211,153,.35);color:#d8fff0}
+  .badge.bad{border-color:rgba(251,113,133,.35);color:#ffd7df}
+  .gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media (max-width:1100px){.gallery{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:820px){.gallery{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:520px){.gallery{grid-template-columns:1fr}}
+  .gItem{border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.16);border-radius:16px;overflow:hidden}
+  .gItem img{width:100%;height:160px;object-fit:cover;display:block;background:rgba(0,0,0,.2)}
+  .gMeta{padding:10px}
+  .gName{font-size:13px;font-weight:700;margin:0 0 6px}
+  .gSub{font-size:12px;color:var(--muted);margin:0}
+  .msg{margin-top:10px;font-size:12.5px;color:var(--muted)}
+  a{color:var(--hi)}
+  code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono','Courier New', monospace; font-size:11px}
 </style>
 </head>
 <body>
-<script>
-const WEBAPP_URL="https://script.google.com/macros/s/AKfycbx_H3KG5QXjuvU9SDWWLIq0H70h6bxIF_6guW5Rd7lOUOa9DFOeaHtJhOSDbw9lXa6T/exec";
-if(!sessionStorage.getItem("admin_token")) location.href="index.html";
-
-function jsonp(action, params={}){
-  return new Promise((resolve,reject)=>{
-    const cb="cb_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
-    window[cb]=(data)=>{ try{resolve(data)} finally{ delete window[cb]; s.remove(); } };
-    const qs=new URLSearchParams();
-    qs.set("action", action);
-    Object.entries(params).forEach(([k,v])=>{ if(v!==undefined&&v!==null) qs.set(k,String(v)); });
-    qs.set("callback", cb);
-    const s=document.createElement("script");
-    s.src=WEBAPP_URL+"?"+qs.toString();
-    s.onerror=()=>{ delete window[cb]; s.remove(); reject(new Error("JSONP failed")); };
-    document.body.appendChild(s);
-  });
-}
-</script>
-
-<header>
-  <h2 style="margin:0">Admin • Chores</h2>
-  <div class="small">Fixes CORS by reading via JSONP (GET). Auto-refresh every 5 seconds.</div>
-</header>
-
-<div class="card">
-  <div class="bar">
-    <input id="q" placeholder="Search">
-    <select id="ass"><option value="all">All assignees</option></select>
-    <select id="st">
-      <option value="open" selected>Open</option>
-      <option value="done">Done</option>
-      <option value="all">All</option>
-    </select>
-    <button id="ref">Refresh</button>
-    <button id="out">Export CSV</button>
-    <button id="lo">Logout</button>
-  </div>
-
-  <div class="grid">
-    <div>
-      <div id="list"></div>
+<div class="wrap">
+  <div class="card">
+    <div class="top">
+      <div>
+        <h1>Admin • Chores</h1>
+        <div class="sub">Calendar + proof gallery. Reads chores via JSONP (no CORS). Auto-refresh every 5 seconds.</div>
+      </div>
+      <div class="actions">
+        <span class="pill">Signed in admin: <strong style="color:var(--text)">kimwilson521@gmail.com</strong></span>
+        <button class="btn" id="refreshBtn">Refresh</button>
+        <button class="btn bad" id="logoutBtn">Logout</button>
+      </div>
     </div>
-    <div>
-      <canvas id="c1" height="170"></canvas>
-      <div style="height:12px"></div>
-      <canvas id="c2" height="170"></canvas>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="dashboard">Dashboard</button>
+      <button class="tab" data-tab="calendar">Calendar</button>
+      <button class="tab" data-tab="proof">Proof</button>
     </div>
+
+    <div class="pane active" id="tab-dashboard">
+      <div class="grid">
+        <div class="panel">
+          <h2>Chores</h2>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+            <label class="muted" style="display:flex;gap:8px;align-items:center;margin:0">
+              Assignee
+              <select id="assigneeSel"></select>
+            </label>
+            <label class="muted" style="display:flex;gap:8px;align-items:center;margin:0">
+              View
+              <select id="viewSel">
+                <option value="all" selected>All</option>
+                <option value="open">Open</option>
+                <option value="done">Done</option>
+              </select>
+            </label>
+            <span class="muted" id="summary"></span>
+          </div>
+          <div style="overflow:auto">
+            <table id="table">
+              <thead>
+                <tr>
+                  <th>Chore</th><th>Assignee</th><th>Due</th><th>Repeat</th><th>Status</th><th>Proof</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="msg" id="dashMsg"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Quick stats</h2>
+          <div class="muted" id="statsBox">Loading…</div>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0">
+          <div class="muted">
+            Backend: <code id="backendUrl"></code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane" id="tab-calendar">
+      <div class="grid">
+        <div class="panel">
+          <div class="calendarHead">
+            <div class="calTitle" id="calTitle">Calendar</div>
+            <div class="actions">
+              <button class="btn" id="prevMonth">◀</button>
+              <button class="btn" id="todayBtn">Today</button>
+              <button class="btn" id="nextMonth">▶</button>
+            </div>
+          </div>
+
+          <div class="calGrid" id="dowRow"></div>
+          <div class="calGrid" id="calGrid"></div>
+
+          <div class="msg" id="calMsg"></div>
+        </div>
+
+        <div class="panel">
+          <h2 id="dayTitle">Day details</h2>
+          <div class="muted" id="dayHint">Tap a day to see chores + proof.</div>
+          <div id="dayList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane" id="tab-proof">
+      <div class="panel">
+        <h2>Proof gallery</h2>
+        <div class="muted" style="margin-bottom:10px">Shows photos from completed chores (Drive links).</div>
+        <div class="gallery" id="gallery"></div>
+        <div class="msg" id="proofMsg"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
-const el={q:document.getElementById("q"),ass:document.getElementById("ass"),st:document.getElementById("st"),
-          ref:document.getElementById("ref"),out:document.getElementById("out"),lo:document.getElementById("lo"),
-          list:document.getElementById("list")};
-let chores=[]; let chart1=null, chart2=null;
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_H3KG5QXjuvU9SDWWLIq0H70h6bxIF_6guW5Rd7lOUOa9DFOeaHtJhOSDbw9lXa6T/exec";
+  document.getElementById('backendUrl').textContent = WEBAPP_URL;
 
-const uniq=a=>[...new Set(a.filter(Boolean))].sort();
-const esc=s=>(s??"").toString().replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  // Admin lock (client-side). If missing token, send to login.
+  const token = sessionStorage.getItem('admin_token');
+  if(!token) {
+    location.href = "index.html";
+  }
 
-function filtered(){
-  const q=(el.q.value||"").toLowerCase().trim();
-  const a=el.ass.value;
-  const st=el.st.value;
-  return chores.filter(c=>{
-    const blob=`${c.name||""} ${c.category||""} ${c.assignee||""}`.toLowerCase();
-    if(q && !blob.includes(q)) return false;
-    if(a!=="all" && String(c.assignee||"")!==a) return false;
-    const done=String(c.done).toLowerCase()==="true";
-    if(st==="open" && done) return false;
-    if(st==="done" && !done) return false;
-    return true;
-  });
-}
+  // ---- JSONP helper (GET) ----
+  function jsonp(params) {
+    return new Promise((resolve, reject) => {
+      const cb = "cb_" + Math.random().toString(36).slice(2);
+      params.callback = cb;
 
-function render(){
-  const names=uniq(chores.map(c=>String(c.assignee||"")));
-  const cur=el.ass.value||"all";
-  el.ass.innerHTML='<option value="all">All assignees</option>' + names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
-  el.ass.value = names.includes(cur) ? cur : "all";
+      const qs = new URLSearchParams(params).toString();
+      const s = document.createElement('script');
+      s.src = WEBAPP_URL + "?" + qs;
 
-  const items=filtered();
-  el.list.innerHTML = items.length ? items.map(c=>{
-    const done=String(c.done).toLowerCase()==="true";
-    const photo=c.photoUrl?String(c.photoUrl):"";
-    return `<div class="item">
-      <div>
-        <div><b>${esc(c.name)}</b> ${done?"✅":"🟡"}</div>
-        <div class="meta">👤 ${esc(c.assignee||"")} • 🔁 ${esc(c.repeat||"none")} • 📅 ${esc(c.due||"")}</div>
+      let done = false;
+      window[cb] = (data) => {
+        done = true;
+        cleanup();
+        resolve(data);
+      };
+
+      function cleanup(){
+        try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+      }
+
+      s.onerror = () => {
+        if(done) return;
+        cleanup();
+        reject(new Error("JSONP load failed"));
+      };
+
+      document.body.appendChild(s);
+      setTimeout(() => {
+        if(done) return;
+        cleanup();
+        reject(new Error("JSONP timeout"));
+      }, 12000);
+    });
+  }
+
+  // ---- Date helpers ----
+  function toYMD(d){
+    const dt = (d instanceof Date) ? d : new Date(d);
+    const y = dt.getUTCFullYear();
+    const m = String(dt.getUTCMonth()+1).padStart(2,'0');
+    const day = String(dt.getUTCDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  function niceDate(iso){
+    if(!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+  }
+  function niceTime(iso){
+    if(!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleString();
+  }
+
+  // ---- State ----
+  let chores = [];
+  let monthOffset = 0;
+  let selectedDayYMD = null;
+
+  async function loadAll(){
+    try {
+      const out = await jsonp({ action:"listChores" });
+      if(!out.ok) throw new Error(out.error || "Load failed");
+      chores = out.items || [];
+      buildAssignees();
+      renderDashboard();
+      renderCalendar();
+      renderProof();
+      document.getElementById('dashMsg').textContent = "";
+      document.getElementById('calMsg').textContent = "";
+      document.getElementById('proofMsg').textContent = "";
+    } catch (e) {
+      document.getElementById('dashMsg').textContent = "Load error: " + e.message;
+      document.getElementById('calMsg').textContent = "Load error: " + e.message;
+      document.getElementById('proofMsg').textContent = "Load error: " + e.message;
+    }
+  }
+
+  function uniq(arr){ return Array.from(new Set(arr)); }
+
+  function buildAssignees(){
+    const sel = document.getElementById('assigneeSel');
+    const current = sel.value || "All";
+    const names = uniq(chores.map(c => String(c.assignee||"").trim()).filter(Boolean)).sort();
+    sel.innerHTML = "";
+    sel.appendChild(new Option("All", "All"));
+    names.forEach(n => sel.appendChild(new Option(n, n)));
+    sel.value = names.includes(current) ? current : "All";
+  }
+
+  function filteredChores(){
+    const who = document.getElementById('assigneeSel').value;
+    const view = document.getElementById('viewSel').value;
+    return chores.filter(c => {
+      if(who !== "All" && String(c.assignee) !== who) return false;
+      const done = String(c.done).toLowerCase() === "true" || c.done === true;
+      if(view === "open" && done) return false;
+      if(view === "done" && !done) return false;
+      return true;
+    });
+  }
+
+  function renderDashboard(){
+    const list = filteredChores();
+    const tb = document.querySelector("#table tbody");
+    tb.innerHTML = "";
+
+    const open = list.filter(c => !(String(c.done).toLowerCase()==="true" || c.done===true)).length;
+    const done = list.length - open;
+
+    document.getElementById('summary').textContent = `Showing ${list.length} chores • Open ${open} • Done ${done}`;
+
+    list
+      .sort((a,b) => toYMD(a.due).localeCompare(toYMD(b.due)))
+      .forEach(c => {
+        const tr = document.createElement('tr');
+
+        const doneFlag = (String(c.done).toLowerCase()==="true" || c.done===true);
+        const status = doneFlag ? "Done" : "Open";
+        const due = c.due ? niceDate(c.due) : "";
+        const rep = c.repeat ? (c.repeat === "everyX" ? `Every ${c.repeatEveryDays||""} days` : c.repeat) : "none";
+
+        tr.innerHTML = `
+          <td>${escapeHtml(c.name||"")}</td>
+          <td>${escapeHtml(c.assignee||"")}</td>
+          <td>${escapeHtml(due)}</td>
+          <td>${escapeHtml(rep)}</td>
+          <td>
+            <span class="pill"><span class="dot ${doneFlag?'ok':'warn'}"></span>${status}</span>
+          </td>
+          <td>${c.photoUrl ? `<a href="${c.photoUrl}" target="_blank" rel="noopener">Open</a>` : ""}</td>
+        `;
+        tb.appendChild(tr);
+      });
+
+    // stats
+    const totalAll = chores.length;
+    const doneAll = chores.filter(c => (String(c.done).toLowerCase()==="true" || c.done===true)).length;
+    const withProof = chores.filter(c => c.photoUrl).length;
+    const repeatDaily = chores.filter(c => String(c.repeat)==="daily").length;
+    const repeatWeekly = chores.filter(c => String(c.repeat)==="weekly").length;
+
+    document.getElementById('statsBox').innerHTML = `
+      <div class="countRow">
+        <span class="badge">Total: <b>${totalAll}</b></span>
+        <span class="badge ok">Done: <b>${doneAll}</b></span>
+        <span class="badge">Proof photos: <b>${withProof}</b></span>
       </div>
-      <div>${photo?`<a href="${esc(photo)}" target="_blank" rel="noopener">📷</a>`:""}</div>
-    </div>`;
-  }).join("") : '<div style="padding:12px;color:#a9b4e6">No chores</div>';
+      <div class="muted" style="margin-top:8px">
+        Daily: ${repeatDaily} • Weekly: ${repeatWeekly}
+      </div>
+    `;
+  }
 
-  // Charts: repeat mix + % complete by assignee
-  const rep={};
-  chores.forEach(c=>{const r=String(c.repeat||"none"); rep[r]=(rep[r]||0)+1;});
-  const labels1=Object.keys(rep), data1=Object.values(rep);
-  if(chart1) chart1.destroy();
-  chart1=new Chart(document.getElementById("c1"), {
-    type:"doughnut",
-    data:{labels:labels1,datasets:[{label:"Repeat mix",data:data1}]}
+  function renderCalendar(){
+    const now = new Date();
+    const base = new Date(now.getFullYear(), now.getMonth()+monthOffset, 1);
+    const year = base.getFullYear();
+    const month = base.getMonth();
+
+    const monthName = base.toLocaleDateString(undefined, { month:'long', year:'numeric' });
+    document.getElementById('calTitle').textContent = monthName;
+
+    // DOW
+    const dows = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    const dowRow = document.getElementById('dowRow');
+    dowRow.innerHTML = "";
+    dows.forEach(d => {
+      const el = document.createElement('div');
+      el.className = "dow";
+      el.textContent = d;
+      dowRow.appendChild(el);
+    });
+
+    // Build map counts by day
+    const map = {};
+    chores.forEach(c => {
+      if(!c.due) return;
+      const ymd = toYMD(c.due);
+      if(!map[ymd]) map[ymd] = { total:0, done:0, items:[] };
+      map[ymd].total++;
+      const doneFlag = (String(c.done).toLowerCase()==="true" || c.done===true);
+      if(doneFlag) map[ymd].done++;
+      map[ymd].items.push(c);
+    });
+
+    const first = new Date(Date.UTC(year, month, 1));
+    // Monday-start offset
+    let startOffset = (first.getUTCDay()+6)%7; // Mon=0..Sun=6
+    const daysInMonth = new Date(Date.UTC(year, month+1, 0)).getUTCDate();
+
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = "";
+
+    // 42 cells
+    for(let cell=0; cell<42; cell++) {
+      const dayNum = cell - startOffset + 1;
+      const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
+
+      let dt = null;
+      if(inMonth) {
+        dt = new Date(Date.UTC(year, month, dayNum));
+      } else {
+        // prev/next month dates
+        dt = new Date(Date.UTC(year, month, 1));
+        dt.setUTCDate(dayNum);
+      }
+      const ymd = toYMD(dt);
+
+      const box = document.createElement('div');
+      box.className = "day" + (inMonth ? "" : " off");
+      if(selectedDayYMD === ymd) {
+        box.style.borderColor = "rgba(96,165,250,.60)";
+        box.style.background = "rgba(96,165,250,.10)";
+      }
+
+      const counts = map[ymd] || { total:0, done:0, items:[] };
+      const open = Math.max(0, counts.total - counts.done);
+
+      box.innerHTML = `
+        <div class="dayNum">
+          <span>${dt.getUTCDate()}</span>
+          <span class="pill" style="padding:2px 7px">${counts.total ? `${counts.done}/${counts.total}` : ""}</span>
+        </div>
+        <div class="countRow">
+          ${counts.total ? `<span class="badge ok">Done ${counts.done}</span>` : ""}
+          ${open ? `<span class="badge bad">Open ${open}</span>` : ""}
+        </div>
+      `;
+
+      box.addEventListener('click', () => {
+        selectedDayYMD = ymd;
+        renderCalendar();
+        renderDay(ymd, counts.items);
+      });
+
+      grid.appendChild(box);
+    }
+
+    // Keep day pane in sync if selected day is in month and exists
+    if(selectedDayYMD && map[selectedDayYMD]) {
+      renderDay(selectedDayYMD, map[selectedDayYMD].items);
+    } else if(selectedDayYMD) {
+      renderDay(selectedDayYMD, []);
+    }
+  }
+
+  function renderDay(ymd, items){
+    const title = document.getElementById('dayTitle');
+    const hint = document.getElementById('dayHint');
+    const list = document.getElementById('dayList');
+
+    title.textContent = "Day details • " + ymd;
+    hint.textContent = items.length ? `${items.length} chore(s) due.` : "No chores due for this day.";
+
+    list.innerHTML = "";
+    items
+      .slice()
+      .sort((a,b) => String(a.assignee).localeCompare(String(b.assignee)))
+      .forEach(c => {
+        const doneFlag = (String(c.done).toLowerCase()==="true" || c.done===true);
+        const div = document.createElement('div');
+        div.className = "panel";
+        div.style.padding = "12px";
+        div.innerHTML = `
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:800;font-size:13px">${escapeHtml(c.name||"")}</div>
+              <div class="muted">${escapeHtml(c.assignee||"")} • Repeat: ${escapeHtml(c.repeat||"none")}</div>
+            </div>
+            <div>
+              <span class="pill"><span class="dot ${doneFlag?'ok':'bad'}"></span>${doneFlag?"Done":"Open"}</span>
+            </div>
+          </div>
+          <div class="muted" style="margin-top:8px">
+            ${doneFlag && c.doneAt ? `Done at: ${escapeHtml(niceTime(c.doneAt))}<br>` : ""}
+            ${c.photoUrl ? `Proof: <a href="${c.photoUrl}" target="_blank" rel="noopener">Open photo</a>` : (doneFlag ? "<span style='color:#ffd7df'>No photo saved</span>" : "")}
+          </div>
+        `;
+        list.appendChild(div);
+      });
+  }
+
+  function renderProof(){
+    const gal = document.getElementById('gallery');
+    const items = chores
+      .filter(c => c.photoUrl)
+      .slice()
+      .sort((a,b) => String(b.photoAt||b.doneAt||"").localeCompare(String(a.photoAt||a.doneAt||"")));
+
+    gal.innerHTML = "";
+    if(!items.length){
+      document.getElementById('proofMsg').textContent = "No proof photos yet. Complete a chore with a photo and it will appear here.";
+      return;
+    }
+    document.getElementById('proofMsg').textContent = "";
+
+    items.forEach(c => {
+      const div = document.createElement('div');
+      div.className = "gItem";
+      div.innerHTML = `
+        <a href="${c.photoUrl}" target="_blank" rel="noopener">
+          <img src="${c.photoUrl}" alt="Proof photo"/>
+        </a>
+        <div class="gMeta">
+          <p class="gName">${escapeHtml(c.name||"")}</p>
+          <p class="gSub">${escapeHtml(c.assignee||"")} • ${escapeHtml(niceTime(c.photoAt||c.doneAt||""))}</p>
+        </div>
+      `;
+      gal.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[m]);
+  }
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
   });
 
-  const ass=uniq(chores.map(c=>String(c.assignee||"")));
-  const pct=ass.map(a=>{
-    const all=chores.filter(c=>String(c.assignee||"")===a);
-    const d=all.filter(c=>String(c.done).toLowerCase()==="true");
-    return all.length ? Math.round((d.length/all.length)*100) : 0;
+  // Controls
+  document.getElementById('refreshBtn').addEventListener('click', loadAll);
+  document.getElementById('assigneeSel').addEventListener('change', renderDashboard);
+  document.getElementById('viewSel').addEventListener('change', renderDashboard);
+
+  document.getElementById('prevMonth').addEventListener('click', ()=>{ monthOffset--; renderCalendar(); });
+  document.getElementById('nextMonth').addEventListener('click', ()=>{ monthOffset++; renderCalendar(); });
+  document.getElementById('todayBtn').addEventListener('click', ()=>{ monthOffset=0; selectedDayYMD=null; renderCalendar(); });
+
+  document.getElementById('logoutBtn').addEventListener('click', ()=>{
+    sessionStorage.removeItem('admin_token');
+    location.href = "index.html";
   });
-  if(chart2) chart2.destroy();
-  chart2=new Chart(document.getElementById("c2"), {
-    type:"bar",
-    data:{labels:ass,datasets:[{label:"% Complete",data:pct}]},
-    options:{scales:{y:{beginAtZero:true,max:100}}}
-  });
-}
 
-async function refresh(){
-  const out = await jsonp("listChores", { assignee:"" });
-  chores = (out && out.ok) ? (out.items || []) : [];
-  render();
-}
-
-el.ref.onclick = refresh;
-el.lo.onclick = ()=>{ sessionStorage.removeItem("admin_token"); location.href="index.html"; };
-el.out.onclick = ()=>{
-  const rows=filtered();
-  const headers=["id","name","assignee","due","repeat","done","doneAt","photoUrl"];
-  const csv=[headers.join(",")].concat(rows.map(r=>headers.map(h=>`"${String(r[h]??"").replaceAll('"','""')}"`).join(","))).join("\n");
-  const blob=new Blob([csv],{type:"text/csv"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download="chores.csv";
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 1500);
-};
-
-["input","change"].forEach(ev=>{ el.q.addEventListener(ev,render); el.ass.addEventListener(ev,render); el.st.addEventListener(ev,render); });
-
-refresh();
-setInterval(refresh, 5000);
+  // Auto-refresh
+  loadAll();
+  setInterval(loadAll, 5000);
 </script>
 </body>
 </html>
