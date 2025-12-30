@@ -54,6 +54,7 @@
   .btn.primary{border-color:rgba(96,165,250,.50);background:rgba(96,165,250,.16)}
   .btn.ok{border-color:rgba(54,211,153,.45);background:rgba(54,211,153,.12)}
   .btn.bad{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12)}
+  .btn.icon{padding:7px 9px;border-radius:10px}
   select, input{
     border:1px solid var(--line);
     background:rgba(0,0,0,.18);
@@ -91,7 +92,7 @@
   .panel h2{margin:0 0 10px;font-size:14px;letter-spacing:.2px}
   .muted{color:var(--muted);font-size:12.5px}
   table{width:100%;border-collapse:collapse}
-  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.10);font-size:13px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.10);font-size:13px;vertical-align:top}
   th{color:rgba(169,180,230,.85);font-weight:600;font-size:12px}
   .pill{display:inline-flex;gap:6px;align-items:center;border:1px solid rgba(255,255,255,.14);
     background:rgba(0,0,0,.18);padding:4px 8px;border-radius:999px;font-size:12px;color:var(--muted)}
@@ -130,6 +131,23 @@
   .msg{margin-top:10px;font-size:12.5px;color:var(--muted)}
   a{color:var(--hi)}
   code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono','Courier New', monospace; font-size:11px}
+
+  /* Modal */
+  .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:9999}
+  .modalBackdrop.show{display:flex}
+  .modal{width:min(720px, 100%);border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg, rgba(10,16,32,.92), rgba(10,16,32,.80));box-shadow:var(--shadow);overflow:hidden}
+  .modalHeader{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .modalTitle{font-weight:800}
+  .modalBody{padding:14px 16px}
+  .formGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:720px){.formGrid{grid-template-columns:1fr}}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .field input,.field select{width:100%}
+  .modalFooter{padding:14px 16px;border-top:1px solid rgba(255,255,255,.10);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.35}
+  .toast{position:fixed;left:18px;right:18px;bottom:18px;display:none;z-index:10000}
+  .toast.show{display:block}
+  .toastInner{max-width:1180px;margin:0 auto;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border-radius:16px;padding:10px 12px;color:var(--text)}
 </style>
 </head>
 <body>
@@ -138,10 +156,11 @@
     <div class="top">
       <div>
         <h1>Admin • Chores</h1>
-        <div class="sub">Calendar + proof gallery. Reads chores via JSONP (no CORS). Auto-refresh every 5 seconds.</div>
+        <div class="sub">Add / edit / delete chores. Calendar + proof gallery. Auto-refresh every 5 seconds.</div>
       </div>
       <div class="actions">
-        <span class="pill">Signed in admin: <strong style="color:var(--text)">kimwilson521@gmail.com</strong></span>
+        <span class="pill">Admin: <strong style="color:var(--text)">kimwilson521@gmail.com</strong></span>
+        <button class="btn primary" id="addBtn">+ Add chore</button>
         <button class="btn" id="refreshBtn">Refresh</button>
         <button class="btn bad" id="logoutBtn">Logout</button>
       </div>
@@ -176,7 +195,7 @@
             <table id="table">
               <thead>
                 <tr>
-                  <th>Chore</th><th>Assignee</th><th>Due</th><th>Repeat</th><th>Status</th><th>Proof</th>
+                  <th>Chore</th><th>Assignee</th><th>Due</th><th>Priority</th><th>Location</th><th>Frequency</th><th>Status</th><th>Proof</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -191,6 +210,10 @@
           <hr style="border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0">
           <div class="muted">
             Backend: <code id="backendUrl"></code>
+          </div>
+          <div class="hint">
+            <b>Location column:</b> add a new header called <code>location</code> in your CHORES sheet (recommended).
+            If you don't add it, location will be stored in <code>category</code> as a fallback.
           </div>
         </div>
       </div>
@@ -234,6 +257,76 @@
   </div>
 </div>
 
+<!-- Modal: Add/Edit -->
+<div class="modalBackdrop" id="modalBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modalHeader">
+      <div class="modalTitle" id="modalTitle">Add chore</div>
+      <button class="btn icon" id="closeModalBtn">✕</button>
+    </div>
+    <div class="modalBody">
+      <div class="formGrid">
+        <div class="field">
+          <label>Chore name</label>
+          <input id="fName" placeholder="e.g. Cat litter">
+        </div>
+        <div class="field">
+          <label>Assignee</label>
+          <select id="fAssignee"></select>
+        </div>
+
+        <div class="field">
+          <label>Due date</label>
+          <input id="fDue" type="date">
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <select id="fPriority">
+            <option value="low">low</option>
+            <option value="medium" selected>medium</option>
+            <option value="high">high</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Location</label>
+          <input id="fLocation" placeholder="e.g. Kitchen">
+        </div>
+        <div class="field">
+          <label>Frequency</label>
+          <select id="fRepeat">
+            <option value="none" selected>none</option>
+            <option value="daily">daily</option>
+            <option value="weekly">weekly</option>
+            <option value="monthly">monthly</option>
+            <option value="everyX">every X days</option>
+          </select>
+        </div>
+
+        <div class="field" id="everyXWrap" style="display:none">
+          <label>Every X days</label>
+          <input id="fEveryX" type="number" min="2" max="365" value="3">
+        </div>
+        <div class="field">
+          <label>Category (optional)</label>
+          <input id="fCategory" placeholder="optional">
+        </div>
+      </div>
+
+      <div class="hint" id="modalHint">
+        This writes to Google Sheets via Apps Script. Save triggers a refresh.
+      </div>
+    </div>
+    <div class="modalFooter">
+      <button class="btn" id="cancelBtn">Cancel</button>
+      <button class="btn ok" id="saveBtn">Save</button>
+      <button class="btn bad" id="deleteBtn" style="display:none">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><div class="toastInner" id="toastInner">Saved</div></div>
+
 <script>
   const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_H3KG5QXjuvU9SDWWLIq0H70h6bxIF_6guW5Rd7lOUOa9DFOeaHtJhOSDbw9lXa6T/exec";
   document.getElementById('backendUrl').textContent = WEBAPP_URL;
@@ -249,8 +342,8 @@
     return new Promise((resolve, reject) => {
       const cb = "cb_" + Math.random().toString(36).slice(2);
       params.callback = cb;
-
       const qs = new URLSearchParams(params).toString();
+
       const s = document.createElement('script');
       s.src = WEBAPP_URL + "?" + qs;
 
@@ -281,6 +374,21 @@
     });
   }
 
+  // ---- POST helper (WRITE). Use no-cors so browser doesn't block; then refresh. ----
+  async function postNoCors(action, payload) {
+    const p = new URLSearchParams({ action });
+    Object.entries(payload || {}).forEach(([k,v]) => {
+      if(v !== undefined && v !== null) p.set(k, String(v));
+    });
+
+    // We cannot read the response due to CORS, but request is sent.
+    await fetch(WEBAPP_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: p
+    });
+  }
+
   // ---- Date helpers ----
   function toYMD(d){
     const dt = (d instanceof Date) ? d : new Date(d);
@@ -305,12 +413,24 @@
   let monthOffset = 0;
   let selectedDayYMD = null;
 
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[m]);
+  }
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    document.getElementById('toastInner').textContent = msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2500);
+  }
+
   async function loadAll(){
     try {
       const out = await jsonp({ action:"listChores" });
       if(!out.ok) throw new Error(out.error || "Load failed");
       chores = out.items || [];
       buildAssignees();
+      syncAssigneeOptionsInForm();
       renderDashboard();
       renderCalendar();
       renderProof();
@@ -336,6 +456,20 @@
     sel.value = names.includes(current) ? current : "All";
   }
 
+  function syncAssigneeOptionsInForm(){
+    const names = uniq(chores.map(c => String(c.assignee||"").trim()).filter(Boolean)).sort();
+    const sel = document.getElementById('fAssignee');
+    const current = sel.value || (names[0] || "Maisie");
+    sel.innerHTML = "";
+    (names.length ? names : ["Maisie"]).forEach(n => sel.appendChild(new Option(n, n)));
+    sel.value = current;
+  }
+
+  function getLocation(c){
+    // Preferred: location column; fallback: category
+    return (c.location && String(c.location).trim()) ? String(c.location) : (c.category ? String(c.category) : "");
+  }
+
   function filteredChores(){
     const who = document.getElementById('assigneeSel').value;
     const view = document.getElementById('viewSel').value;
@@ -346,6 +480,12 @@
       if(view === "done" && !done) return false;
       return true;
     });
+  }
+
+  function formatRepeat(c){
+    if(!c.repeat) return "none";
+    if(String(c.repeat)==="everyX") return `every ${c.repeatEveryDays||""} days`;
+    return String(c.repeat);
   }
 
   function renderDashboard(){
@@ -366,20 +506,34 @@
         const doneFlag = (String(c.done).toLowerCase()==="true" || c.done===true);
         const status = doneFlag ? "Done" : "Open";
         const due = c.due ? niceDate(c.due) : "";
-        const rep = c.repeat ? (c.repeat === "everyX" ? `Every ${c.repeatEveryDays||""} days` : c.repeat) : "none";
+        const rep = formatRepeat(c);
+        const loc = getLocation(c);
+        const pr = c.priority ? String(c.priority) : "medium";
 
         tr.innerHTML = `
           <td>${escapeHtml(c.name||"")}</td>
           <td>${escapeHtml(c.assignee||"")}</td>
           <td>${escapeHtml(due)}</td>
+          <td>${escapeHtml(pr)}</td>
+          <td>${escapeHtml(loc)}</td>
           <td>${escapeHtml(rep)}</td>
-          <td>
-            <span class="pill"><span class="dot ${doneFlag?'ok':'warn'}"></span>${status}</span>
-          </td>
+          <td><span class="pill"><span class="dot ${doneFlag?'ok':'warn'}"></span>${status}</span></td>
           <td>${c.photoUrl ? `<a href="${c.photoUrl}" target="_blank" rel="noopener">Open</a>` : ""}</td>
+          <td style="white-space:nowrap">
+            <button class="btn icon" title="Edit" data-edit="${escapeHtml(c.id)}">✎</button>
+            <button class="btn icon bad" title="Delete" data-del="${escapeHtml(c.id)}">🗑</button>
+          </td>
         `;
         tb.appendChild(tr);
       });
+
+    // Hook action buttons
+    tb.querySelectorAll("[data-edit]").forEach(b => {
+      b.addEventListener("click", () => openEditModal(String(b.getAttribute("data-edit"))));
+    });
+    tb.querySelectorAll("[data-del]").forEach(b => {
+      b.addEventListener("click", () => confirmDelete(String(b.getAttribute("data-del"))));
+    });
 
     // stats
     const totalAll = chores.length;
@@ -433,14 +587,12 @@
     });
 
     const first = new Date(Date.UTC(year, month, 1));
-    // Monday-start offset
-    let startOffset = (first.getUTCDay()+6)%7; // Mon=0..Sun=6
+    let startOffset = (first.getUTCDay()+6)%7; // Monday-start
     const daysInMonth = new Date(Date.UTC(year, month+1, 0)).getUTCDate();
 
     const grid = document.getElementById('calGrid');
     grid.innerHTML = "";
 
-    // 42 cells
     for(let cell=0; cell<42; cell++) {
       const dayNum = cell - startOffset + 1;
       const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
@@ -449,7 +601,6 @@
       if(inMonth) {
         dt = new Date(Date.UTC(year, month, dayNum));
       } else {
-        // prev/next month dates
         dt = new Date(Date.UTC(year, month, 1));
         dt.setUTCDate(dayNum);
       }
@@ -485,7 +636,6 @@
       grid.appendChild(box);
     }
 
-    // Keep day pane in sync if selected day is in month and exists
     if(selectedDayYMD && map[selectedDayYMD]) {
       renderDay(selectedDayYMD, map[selectedDayYMD].items);
     } else if(selectedDayYMD) {
@@ -494,13 +644,10 @@
   }
 
   function renderDay(ymd, items){
-    const title = document.getElementById('dayTitle');
-    const hint = document.getElementById('dayHint');
+    document.getElementById('dayTitle').textContent = "Day details • " + ymd;
+    document.getElementById('dayHint').textContent = items.length ? `${items.length} chore(s) due.` : "No chores due for this day.";
+
     const list = document.getElementById('dayList');
-
-    title.textContent = "Day details • " + ymd;
-    hint.textContent = items.length ? `${items.length} chore(s) due.` : "No chores due for this day.";
-
     list.innerHTML = "";
     items
       .slice()
@@ -514,7 +661,7 @@
           <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div>
               <div style="font-weight:800;font-size:13px">${escapeHtml(c.name||"")}</div>
-              <div class="muted">${escapeHtml(c.assignee||"")} • Repeat: ${escapeHtml(c.repeat||"none")}</div>
+              <div class="muted">${escapeHtml(c.assignee||"")} • Priority: ${escapeHtml(c.priority||"medium")} • Location: ${escapeHtml(getLocation(c)||"")}</div>
             </div>
             <div>
               <span class="pill"><span class="dot ${doneFlag?'ok':'bad'}"></span>${doneFlag?"Done":"Open"}</span>
@@ -559,9 +706,129 @@
     });
   }
 
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[m]);
+  // ---------- Add/Edit/Delete ----------
+  let modalMode = "add"; // add|edit
+  let editingId = null;
+
+  const modal = document.getElementById('modalBackdrop');
+  const everyXWrap = document.getElementById('everyXWrap');
+  const fRepeat = document.getElementById('fRepeat');
+
+  fRepeat.addEventListener('change', () => {
+    everyXWrap.style.display = (fRepeat.value === "everyX") ? "block" : "none";
+  });
+
+  function openModal(){ modal.classList.add('show'); }
+  function closeModal(){ modal.classList.remove('show'); editingId=null; modalMode="add"; }
+  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  document.getElementById('cancelBtn').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+
+  function setModalTitle(t){ document.getElementById('modalTitle').textContent = t; }
+
+  function resetForm(){
+    document.getElementById('fName').value = "";
+    document.getElementById('fDue').value = "";
+    document.getElementById('fPriority').value = "medium";
+    document.getElementById('fLocation').value = "";
+    document.getElementById('fRepeat').value = "none";
+    document.getElementById('fEveryX').value = "3";
+    document.getElementById('fCategory').value = "";
+    everyXWrap.style.display = "none";
   }
+
+  function openAddModal(){
+    modalMode="add";
+    editingId=null;
+    setModalTitle("Add chore");
+    resetForm();
+    document.getElementById('deleteBtn').style.display = "none";
+    document.getElementById('saveBtn').textContent = "Create";
+    openModal();
+  }
+
+  function openEditModal(id){
+    const c = chores.find(x => String(x.id) === String(id));
+    if(!c) return toast("Chore not found");
+    modalMode="edit";
+    editingId = String(id);
+    setModalTitle("Edit chore");
+    document.getElementById('deleteBtn').style.display = "inline-flex";
+    document.getElementById('saveBtn').textContent = "Save";
+    document.getElementById('fName').value = c.name || "";
+    document.getElementById('fAssignee').value = c.assignee || "Maisie";
+    document.getElementById('fDue').value = c.due ? toYMD(c.due) : "";
+    document.getElementById('fPriority').value = (c.priority || "medium");
+    document.getElementById('fLocation').value = getLocation(c) || "";
+    document.getElementById('fRepeat').value = (c.repeat || "none");
+    document.getElementById('fEveryX').value = String(c.repeatEveryDays || 3);
+    document.getElementById('fCategory').value = (c.category || "");
+    everyXWrap.style.display = (document.getElementById('fRepeat').value === "everyX") ? "block" : "none";
+    openModal();
+  }
+
+  async function confirmDelete(id){
+    if(!confirm("Delete this chore?")) return;
+    await doDelete(id);
+  }
+
+  async function doDelete(id){
+    toast("Deleting…");
+    await postNoCors("deleteChore", {
+      id_token: token,
+      choreId: id
+    });
+    closeModal();
+    setTimeout(loadAll, 1200);
+    toast("Deleted. Refreshing…");
+  }
+
+  document.getElementById('deleteBtn').addEventListener('click', async ()=>{
+    if(!editingId) return;
+    if(!confirm("Delete this chore?")) return;
+    await doDelete(editingId);
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', async ()=>{
+    const name = document.getElementById('fName').value.trim();
+    const assignee = document.getElementById('fAssignee').value.trim();
+    const due = document.getElementById('fDue').value; // YYYY-MM-DD
+    const priority = document.getElementById('fPriority').value;
+    const location = document.getElementById('fLocation').value.trim();
+    const repeat = document.getElementById('fRepeat').value;
+    const repeatEveryDays = (repeat === "everyX") ? document.getElementById('fEveryX').value : "";
+    const category = document.getElementById('fCategory').value.trim();
+
+    if(!name) return toast("Enter a chore name");
+    if(!assignee) return toast("Select an assignee");
+
+    toast(modalMode === "add" ? "Creating…" : "Saving…");
+
+    if(modalMode === "add"){
+      await postNoCors("createChore", {
+        id_token: token,
+        name, assignee, due, priority,
+        repeat, repeatEveryDays,
+        // Send both: location + category. Script can choose where to store.
+        location,
+        category
+      });
+    } else {
+      // Requires Apps Script action "updateChore" (see instructions below)
+      await postNoCors("updateChore", {
+        id_token: token,
+        choreId: editingId,
+        name, assignee, due, priority,
+        repeat, repeatEveryDays,
+        location,
+        category
+      });
+    }
+
+    closeModal();
+    setTimeout(loadAll, 1200);
+    toast("Saved. Refreshing…");
+  });
 
   // Tabs
   document.querySelectorAll('.tab').forEach(btn => {
@@ -587,7 +854,9 @@
     location.href = "index.html";
   });
 
-  // Auto-refresh
+  document.getElementById('addBtn').addEventListener('click', openAddModal);
+
+  // Start
   loadAll();
   setInterval(loadAll, 5000);
 </script>
