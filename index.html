@@ -1,44 +1,407 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Chores Login</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<style>
-body{font-family:system-ui;margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1020;color:#e8ecff}
-.card{max-width:760px;width:92vw;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:18px;background:rgba(255,255,255,.05)}
-button{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#e8ecff;cursor:pointer}
-.small{color:#a9b4e6;font-size:13px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chores Login</title>
+  <style>
+    :root{
+      --bg:#0b1020; --text:#e8ecff; --muted:#a9b4e6; --line:rgba(255,255,255,.12);
+      --shadow:0 18px 50px rgba(0,0,0,.45); --radius:18px;
+      --hi:#60a5fa; --ok:#36d399; --bad:#fb7185;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh;
+      font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.25), transparent 55%),
+        radial-gradient(900px 500px at 90% 0%, rgba(251,113,133,.18), transparent 60%),
+        radial-gradient(1000px 700px at 60% 120%, rgba(54,211,153,.14), transparent 60%),
+        var(--bg);
+      display:flex; align-items:center; justify-content:center;
+      padding:22px;
+    }
+    .card{
+      width:min(920px, 100%);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .top{
+      padding:18px 18px 14px;
+      border-bottom:1px solid var(--line);
+      background:rgba(0,0,0,.12);
+      display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; align-items:flex-start;
+    }
+    h1{margin:0;font-size:20px;letter-spacing:.3px}
+    .sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.35}
+    .pill{
+      border:1px solid rgba(96,165,250,.45);
+      background:rgba(96,165,250,.14);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:999px;
+      font-size:12px;
+      display:inline-flex; gap:8px; align-items:center;
+    }
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:0;}
+    @media (max-width:860px){ .grid{grid-template-columns:1fr} }
+    .pane{padding:18px;border-right:1px solid var(--line);}
+    @media (max-width:860px){ .pane{border-right:none;border-bottom:1px solid var(--line)} }
+    .pane:last-child{border-right:none;border-bottom:none}
+    .pane h2{margin:0 0 10px;font-size:14px;letter-spacing:.2px}
+    .pane p{margin:0 0 14px;color:var(--muted);font-size:12.5px;line-height:1.4}
+    label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted);margin-bottom:10px}
+    input,select,button{font:inherit;color:var(--text)}
+    input,select{
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+      outline:none;
+    }
+    input:focus,select:focus{border-color:rgba(96,165,250,.55)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:460px){ .row{grid-template-columns:1fr} }
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.05);
+      padding:11px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      transition:.15s ease;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      box-shadow:0 10px 22px rgba(0,0,0,.25);
+      width:100%;
+    }
+    .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.08)}
+    .btn:active{transform:translateY(0px)}
+    .btn.primary{border-color:rgba(96,165,250,.50);background:rgba(96,165,250,.16)}
+    .btn.ok{border-color:rgba(54,211,153,.45);background:rgba(54,211,153,.12)}
+    .btn.danger{border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.12)}
+    .hint{
+      margin-top:10px;
+      color:rgba(169,180,230,.75);
+      font-size:12px;
+      line-height:1.35;
+    }
+    .msg{
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.18);
+      color:var(--muted);
+      font-size:12.5px;
+      display:none;
+    }
+    .msg.bad{border-color:rgba(251,113,133,.35);color:#ffd7df}
+    .msg.ok{border-color:rgba(54,211,153,.30);color:#d8fff0}
+    .footer{
+      padding:14px 18px;
+      border-top:1px solid var(--line);
+      background:rgba(0,0,0,.12);
+      display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;
+      color:rgba(169,180,230,.75); font-size:12px;
+    }
+    code{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:11px;
+      color:#d6dcff;
+      background:rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      padding:2px 6px;
+      border-radius:10px;
+    }
+    .tinyBtn{
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(0,0,0,.18);
+      border-radius:12px;
+      padding:8px 10px;
+      cursor:pointer;
+      color:var(--text);
+    }
+  </style>
 </head>
 <body>
-<div class="card">
-  <h2 style="margin:0 0 6px">Chores Dashboard</h2>
-  <div class="small" style="margin:0 0 14px">Admin uses Google Sign-In. User opens Maisie dashboard.</div>
+  <div class="card">
+    <div class="top">
+      <div>
+        <h1>Chores Dashboard Login</h1>
+        <div class="sub">Admin redirects to <code>admin maise progress calander.html</code>. End user redirects to <code>maise c.html</code>.</div>
+      </div>
+      <div class="pill">🔐 Local login (client-side)</div>
+    </div>
 
-  <h3 style="margin:0 0 8px">Admin</h3>
-  <div id="googleBtn"></div>
-  <div class="small" style="margin:10px 0 16px">Allowed: <b>kimwilson521@gmail.com</b></div>
+    <div class="grid">
+      <!-- Admin -->
+      <div class="pane">
+        <h2>Admin</h2>
+        <p>Full control dashboard (admin-only).</p>
 
-  <h3 style="margin:0 0 8px">User</h3>
-  <button id="userBtn">Open Maisie</button>
+        <label>Admin password
+          <input type="password" id="adminPass" placeholder="Enter admin password" autocomplete="current-password" />
+        </label>
+
+        <div class="row">
+          <button class="btn primary" id="adminLoginBtn">Login as Admin →</button>
+          <button class="btn danger" id="setAdminPassBtn" type="button">Set/Change Password</button>
+        </div>
+
+        <div class="hint">
+          Redirect target: <code id="adminTargetLabel"></code><br/>
+          Password is stored in <code>localStorage</code> (not secure for real-world use).
+        </div>
+
+        <div class="msg" id="adminMsg"></div>
+      </div>
+
+      <!-- End user -->
+      <div class="pane">
+        <h2>End User</h2>
+        <p>Enter PIN to open Maisie dashboard.</p>
+
+        <label>User
+          <input type="text" value="Maisie" disabled />
+        </label>
+
+        <label>PIN
+          <input type="password" id="userPin" placeholder="Enter PIN" inputmode="numeric" autocomplete="one-time-code" />
+        </label>
+
+        <div class="row">
+          <button class="btn ok" id="userPinLoginBtn">Open dashboard →</button>
+          <button class="btn danger" id="setUserPinBtn" type="button">Set/Change PIN</button>
+        </div>
+
+        <div class="hint">
+          Redirect target: <code id="userTargetLabel"></code><br/>
+          PIN is stored in <code>localStorage</code> (client-side). If you clear browser data, you’ll need to set it again.
+        </div>
+
+        <div class="msg" id="userMsg"></div>
 </div>
+    </div>
+
+    <div class="footer">
+      <div>
+        Rename files? Update <code>ADMIN_PAGE</code> and <code>USER_PAGE</code> in the script.
+      </div>
+      <button class="tinyBtn" id="clearSessionBtn" type="button">Clear login session</button>
+    </div>
+  </div>
 
 <script>
-const GOOGLE_CLIENT_ID="268475007338-dj50bjnkclghg3eaiv3bivh4qu8325mn.apps.googleusercontent.com";
-const ADMIN_PAGE="admin maise progress calander.html";
-const USER_PAGE="maise c.html";
+(() => {
+  // ====== YOUR FILENAMES (as requested) ======
+  // NOTE: spaces in filenames work, but are awkward on the web.
+  // If you can, rename to admin-maisie-progress-calendar.html and maisie-c.html.
+  const ADMIN_PAGE = "admin maise progress calander.html";
+  const USER_PAGE  = "maise c.html";
 
-window.onload=()=>{
-  if(!window.google || !google.accounts || !google.accounts.id) return;
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback:(resp)=>{ sessionStorage.setItem("admin_token", resp.credential); location.href=ADMIN_PAGE; }
+  // ====== STORAGE KEYS ======
+  const PEOPLE_KEY = "chores_people_v1";
+  const ADMIN_PASS_KEY = "chores_admin_password_v1";
+  const SESSION_KEY = "chores_session_v1"; // { role:'admin'|'user', name, at }
+
+  const $ = (id) => document.getElementById(id);
+
+  const el = {
+    adminPass: $("adminPass"),
+    adminLoginBtn: $("adminLoginBtn"),
+    setAdminPassBtn: $("setAdminPassBtn"),
+    adminMsg: $("adminMsg"),
+
+    userPin: $("userPin"),
+    userPinLoginBtn: $("userPinLoginBtn"),
+    setUserPinBtn: $("setUserPinBtn"),
+    userMsg: $("userMsg"),
+
+    adminTargetLabel: $("adminTargetLabel"),
+    userTargetLabel: $("userTargetLabel"),
+
+    clearSessionBtn: $("clearSessionBtn"),
+  };
+
+  el.adminTargetLabel.textContent = ADMIN_PAGE;
+  el.userTargetLabel.textContent = USER_PAGE;
+
+  function normalizeName(s){
+    return (s || "").trim().replace(/\s+/g, " ");
+  }
+  function loadPeople(){
+    try { return JSON.parse(localStorage.getItem(PEOPLE_KEY) || "[]"); }
+    catch { return []; }
+  }
+  function saveSession(obj){
+    localStorage.setItem(SESSION_KEY, JSON.stringify(obj));
+  }
+  function showMsg(box, text, kind){
+    box.className = "msg" + (kind ? " " + kind : "");
+    box.textContent = text;
+    box.style.display = "block";
+  }
+  function clearMsg(box){
+    box.style.display = "none";
+    box.textContent = "";
+    box.className = "msg";
+  }
+
+  function getAdminPass(){
+    return localStorage.getItem("chores_admin_password_v1") || "";
+  }
+  function setAdminPass(newPass){
+    localStorage.setItem("chores_admin_password_v1", newPass);
+  }
+
+  // Admin: set/change password
+  el.setAdminPassBtn.addEventListener("click", () => {
+    clearMsg(el.adminMsg);
+    const current = getAdminPass();
+
+    if(current){
+      const old = prompt("Enter current admin password:");
+      if(old === null) return;
+      if(old !== current){
+        showMsg(el.adminMsg, "Wrong current password.", "bad");
+        return;
+      }
+    }
+
+    const p1 = prompt("Set admin password (min 4 chars):");
+    if(p1 === null) return;
+    const pass = (p1 || "").trim();
+    if(pass.length < 4){
+      showMsg(el.adminMsg, "Password must be at least 4 characters.", "bad");
+      return;
+    }
+    const p2 = prompt("Confirm admin password:");
+    if(p2 === null) return;
+    if(p2.trim() !== pass){
+      showMsg(el.adminMsg, "Passwords did not match.", "bad");
+      return;
+    }
+
+    setAdminPass(pass);
+    showMsg(el.adminMsg, "Admin password saved.", "ok");
+    el.adminPass.value = "";
   });
-  google.accounts.id.renderButton(document.getElementById("googleBtn"),{theme:"outline",size:"large"});
-};
-document.getElementById("userBtn").onclick=()=>location.href=USER_PAGE;
+
+  // Admin: login
+  el.adminLoginBtn.addEventListener("click", () => {
+    clearMsg(el.adminMsg);
+
+    const stored = getAdminPass();
+    if(!stored){
+      showMsg(el.adminMsg, "No admin password set yet. Click “Set/Change Password” first.", "bad");
+      return;
+    }
+
+    const entered = el.adminPass.value || "";
+    if(entered !== stored){
+      showMsg(el.adminMsg, "Incorrect password.", "bad");
+      return;
+    }
+
+    saveSession({ role:"admin", at: Date.now() });
+    sessionStorage.setItem("admin_token", "local_admin");
+    window.location.href = ADMIN_PAGE;
+  });
+
+  // Enter key submits admin login
+  el.adminPass.addEventListener("keydown", (e) => {
+    if(e.key === "Enter") el.adminLoginBtn.click();
+  });
+
+  // User PIN (Maisie)
+  const USER_PIN_KEY = "chores_user_pin_maisie_v1";
+
+  function getUserPin(){
+    return localStorage.getItem(USER_PIN_KEY) || "";
+  }
+  function setUserPin(pin){
+    localStorage.setItem(USER_PIN_KEY, pin);
+  }
+
+  // Set/Change PIN
+  el.setUserPinBtn.addEventListener("click", () => {
+    clearMsg(el.userMsg);
+    const current = getUserPin();
+
+    if(current){
+      const old = prompt("Enter current PIN:");
+      if(old === null) return;
+      if(old !== current){
+        showMsg(el.userMsg, "Wrong current PIN.", "bad");
+        return;
+      }
+    }
+
+    const p1 = prompt("Set PIN (4–8 digits):");
+    if(p1 === null) return;
+    const pin = (p1 || "").trim();
+
+    if(!/^\d{4,8}$/.test(pin)){
+      showMsg(el.userMsg, "PIN must be 4–8 digits.", "bad");
+      return;
+    }
+
+    const p2 = prompt("Confirm PIN:");
+    if(p2 === null) return;
+    if((p2 || "").trim() !== pin){
+      showMsg(el.userMsg, "PINs did not match.", "bad");
+      return;
+    }
+
+    setUserPin(pin);
+    el.userPin.value = "";
+    showMsg(el.userMsg, "PIN saved.", "ok");
+  });
+
+  // Login with PIN
+  el.userPinLoginBtn.addEventListener("click", () => {
+    clearMsg(el.userMsg);
+
+    const stored = getUserPin();
+    if(!stored){
+      showMsg(el.userMsg, "No PIN set yet. Click “Set/Change PIN” first.", "bad");
+      return;
+    }
+
+    const entered = (el.userPin.value || "").trim();
+    if(entered !== stored){
+      showMsg(el.userMsg, "Incorrect PIN.", "bad");
+      return;
+    }
+
+    // Value expected by the Maisie page guard:
+    sessionStorage.setItem("user_name", "Maisie");
+    window.location.href = USER_PAGE;
+  });
+
+  // Enter key submits PIN
+  el.userPin.addEventListener("keydown", (e) => {
+    if(e.key === "Enter") el.userPinLoginBtn.click();
+  });
+
+
+  // Clear session
+  el.clearSessionBtn.addEventListener("click", () => {
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem("user_name");
+    sessionStorage.removeItem("admin_token");
+    showMsg(el.userMsg, "Login session cleared.", "ok");
+    showMsg(el.adminMsg, "Login session cleared.", "ok");
+  });
+
+  // Init
+  clearMsg(el.userMsg);
+})();
 </script>
 </body>
 </html>
