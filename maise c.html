@@ -102,7 +102,7 @@
   <input name="action" value="">
   <input name="choreId" value="">
   <input name="assignee" value="">
-  <input name="base64" value="">
+  <textarea name="base64"></textarea>
   <input name="mimeType" value="">
   <input name="filename" value="">
 </form>
@@ -176,7 +176,7 @@
   }
 
   // Compress image to JPEG to avoid Apps Script size limits
-  async function compressToJpegDataUrl(file, maxW=1280, maxH=1280, quality=0.78) {
+  async function compressToJpegDataUrl(file, maxW=1024, maxH=1024, quality=0.65) {
     const img = await new Promise((resolve, reject) => {
       const i = new Image();
       i.onload = () => resolve(i);
