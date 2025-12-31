@@ -201,12 +201,12 @@
   // Form POST to Apps Script (more reliable than fetch no-cors)
   function postCompleteChore({ choreId, assignee, base64, mimeType, filename }) {
     const form = document.getElementById("postForm");
-    form.action.value = "completeChore";
-    form.choreId.value = String(choreId);
-    form.assignee.value = String(assignee);
-    form.base64.value = String(base64);
-    form.mimeType.value = String(mimeType || "image/jpeg");
-    form.filename.value = String(filename || ("proof_"+Date.now()+".jpg"));
+    form.elements["action"].value = "completeChore";
+    form.elements["choreId"].value = String(choreId);
+    form.elements["assignee"].value = String(assignee);
+    form.elements["base64"].value = String(base64);
+    form.elements["mimeType"].value = String(mimeType || "image/jpeg");
+    form.elements["filename"].value = String(filename || ("proof_"+Date.now()+".jpg"));
     form.submit();
   }
 
