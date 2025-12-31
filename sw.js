@@ -1,37 +1,64 @@
-const CACHE = "chores-pwa-v1";
-const ASSETS = [
+// sw.js (network-first for HTML to avoid stale pages)
+const CACHE_NAME = "chores-pwa-v3"; // bump to force update
+const ASSET_CACHE = [
   "./",
   "./index.html",
   "./admin%20maise%20progress%20calander.html",
   "./maise%20c.html",
   "./manifest.json",
-  "./icon-192.png",
-  "./icon-512.png"
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
-});
-
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => (k === CACHE ? null : caches.delete(k)))))
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSET_CACHE)).catch(() => {})
   );
 });
 
-self.addEventListener("fetch", (e) => {
-  const req = e.request;
-  const url = new URL(req.url);
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => (k !== CACHE_NAME ? caches.delete(k) : Promise.resolve())));
+    await self.clients.claim();
+  })());
+});
 
-  // Only handle same-origin GET requests
-  if (req.method !== "GET" || url.origin !== self.location.origin) return;
+// Network-first for navigations/HTML, cache-first for other GETs.
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
 
-  e.respondWith(
-    caches.match(req).then((cached) => cached || fetch(req).then((resp) => {
-      // Cache new navigations/static gets
-      const copy = resp.clone();
-      caches.open(CACHE).then(c => c.put(req, copy)).catch(()=>{});
-      return resp;
-    }).catch(()=>cached))
-  );
+  const accept = req.headers.get("accept") || "";
+  const isHTML = req.mode === "navigate" || accept.includes("text/html");
+
+  if (isHTML) {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(req);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(req, fresh.clone());
+        return fresh;
+      } catch (e) {
+        const cached = await caches.match(req);
+        return cached || caches.match("./index.html");
+      }
+    })());
+    return;
+  }
+
+  // Cache-first for assets
+  event.respondWith((async () => {
+    const cached = await caches.match(req);
+    if (cached) return cached;
+    try {
+      const fresh = await fetch(req);
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(req, fresh.clone());
+      return fresh;
+    } catch (e) {
+      return cached;
+    }
+  })());
 });
